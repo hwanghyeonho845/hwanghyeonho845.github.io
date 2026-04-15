@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <!-- 문자 인코딩 설정 -->
+  <meta charset="UTF-8">
+  <!-- 스마트폰 화면 크기에 맞게 조정 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>학교 안내도</title>
+
+  <style>
+    /* ── 전체 기본 설정 ── */
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: 'Apple SD Gothic Neo', '맑은 고딕', sans-serif;
+      background: #f9f9f9; color: #333; min-height: 100vh;
+    }
+
+    /* ── 헤더 ── */
+    .header {
+      background: white; padding: 12px 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-row { display: flex; align-items: center; gap: 10px; }
+    .search-box {
+      flex: 1; display: flex; align-items: center;
+      background: #f2f2f2; border-radius: 20px; padding: 9px 14px; gap: 8px;
+    }
+    .search-input {
+      border: none; background: transparent; font-size: 15px;
+      color: #333; width: 100%; outline: none; font-family: inherit;
+    }
+    .search-input::placeholder { color: #aaa; }
+    /* QR 스캔 버튼 (헤더 우측) */
+    .qr-btn {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: #2563eb; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+
+    /* ── 메인 문구 ── */
+    .main-content { text-align: center; padding: 32px 20px 14px; }
+    .main-text { font-size: 20px; font-weight: 700; color: #222; margin-bottom: 6px; }
+    .sub-text { font-size: 13px; color: #999; }
+
+    /* ── 장소 목록 ── */
+    .list-wrap { padding: 10px 16px 120px; }
+    .list-label { font-size: 13px; color: #999; margin-bottom: 10px; padding-left: 2px; }
+    .place-card {
+      background: white; border-radius: 12px; padding: 13px 16px;
+      margin-bottom: 9px; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      display: flex; align-items: center; gap: 14px; cursor: pointer;
+    }
+    .place-card:active { box-shadow: 0 2px 10px rgba(37,99,235,0.15); }
+    .floor-badge {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: #e8f0fe; color: #2563eb;
+      font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .place-info { flex: 1; }
+    .place-name { font-size: 15px; font-weight: 600; color: #222; margin-bottom: 3px; }
+    .place-desc { font-size: 13px; color: #999; }
+    .no-result { text-align: center; padding: 40px 20px; color: #bbb; font-size: 15px; }
+
+    /* ── 현재 위치 배너 (QR 스캔 후 상단에 표시) ── */
+    .current-loc-banner {
+      display: none;
+      margin: 10px 16px 0;
+      background: #eff6ff; border-radius: 12px;
+      padding: 12px 16px; border: 1.5px solid #bfdbfe;
+    }
+    .current-loc-banner.visible { display: flex; align-items: center; gap: 10px; }
+    .clb-icon { font-size: 20px; flex-shrink: 0; }
+    .clb-info { flex: 1; }
+    .clb-label { font-size: 11px; color: #3b82f6; font-weight: 600; margin-bottom: 2px; }
+    .clb-name { font-size: 15px; font-weight: 700; color: #1e3a8a; }
+    .clb-floor { font-size: 12px; color: #60a5fa; }
+    .clb-clear { font-size: 18px; color: #93c5fd; background: none; border: none; cursor: pointer; padding: 4px; }
+
+    /* ── 팝업 (장소 상세) ── */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 200;
+      align-items: flex-end; justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: white; width: 100%; max-width: 480px;
+      border-radius: 20px 20px 0 0; padding: 22px 20px 36px;
+      animation: slideUp .22s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle { width: 40px; height: 4px; background: #e0e0e0; border-radius: 2px; margin: 0 auto 18px; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .modal-title { font-size: 19px; font-weight: 700; color: #111; }
+    .modal-close {
+      width: 30px; height: 30px; border-radius: 50%; background: #f2f2f2;
+      border: none; font-size: 15px; color: #666; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-badge {
+      display: inline-block; background: #e8f0fe; color: #2563eb;
+      font-size: 13px; font-weight: 600; padding: 4px 12px;
+      border-radius: 20px; margin-bottom: 16px;
+    }
+    .modal-divider { height: 1px; background: #f0f0f0; margin: 14px 0; }
+    .modal-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .modal-row-icon { font-size: 15px; width: 22px; text-align: center; flex-shrink: 0; margin-top: 1px; }
+    .modal-row-content { flex: 1; }
+    .modal-row-label { font-size: 12px; color: #aaa; margin-bottom: 2px; }
+    .modal-row-value { font-size: 14px; color: #333; line-height: 1.5; }
+    /* 경로 안내 버튼 (팝업 내) */
+    .nav-from-btn, .nav-to-btn {
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 13px; border-radius: 10px;
+      font-size: 15px; font-weight: 600; width: 100%;
+      cursor: pointer; font-family: inherit; border: none; margin-top: 8px;
+    }
+    .nav-from-btn { background: #eff6ff; color: #2563eb; }
+    .nav-to-btn   { background: #2563eb; color: white; }
+    .nav-from-btn:active { background: #dbeafe; }
+    .nav-to-btn:active   { background: #1d4ed8; }
+
+    /* ── QR 스캐너 팝업 ── */
+    .qr-modal-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85); z-index: 300;
+      align-items: flex-end; justify-content: center;
+    }
+    .qr-modal-backdrop.open { display: flex; }
+    .qr-modal {
+      background: #111; width: 100%; max-width: 480px;
+      border-radius: 20px 20px 0 0; padding: 20px 20px 40px;
+    }
+    .qr-modal-handle { width: 40px; height: 4px; background: #444; border-radius: 2px; margin: 0 auto 16px; }
+    .qr-modal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .qr-modal-title { color: white; font-size: 16px; font-weight: 600; }
+    .qr-close-btn { background: #333; border: none; color: #aaa; font-size: 18px; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; }
+    .qr-video-wrap {
+      position: relative; aspect-ratio: 1; background: black;
+      border-radius: 12px; overflow: hidden; margin-bottom: 14px;
+    }
+    .qr-video-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .qr-scan-overlay {
+      position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center;
+    }
+    .qr-scan-frame { width: 55%; height: 55%; position: relative; }
+    .qr-scan-frame::before, .qr-scan-frame::after,
+    .qr-scan-frame span::before, .qr-scan-frame span::after {
+      content: ''; position: absolute; width: 22px; height: 22px;
+      border-color: white; border-style: solid;
+    }
+    .qr-scan-frame::before  { top:0;    left:0;  border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+    .qr-scan-frame::after   { top:0;    right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+    .qr-scan-frame span::before { bottom:0; left:0;  border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+    .qr-scan-frame span::after  { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+    .qr-hint { color: #999; font-size: 13px; text-align: center; }
+    .qr-status { color: #60a5fa; font-size: 14px; text-align: center; margin-top: 8px; min-height: 22px; }
+
+    /* ── 경로 안내 화면 ── */
+    .nav-screen {
+      display: none; position: fixed; inset: 0;
+      background: #f9f9f9; z-index: 150; overflow-y: auto;
+    }
+    .nav-screen.open { display: block; }
+    .nav-header {
+      background: white; padding: 14px 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .nav-back-btn {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: #f2f2f2; border: none; font-size: 18px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .nav-header-title { font-size: 16px; font-weight: 700; color: #111; flex: 1; }
+    .nav-body { padding: 16px 16px 80px; }
+
+    /* 출발지/목적지 카드 */
+    .nav-point-card {
+      background: white; border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .npc-label { font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+    .npc-label.from { color: #3b82f6; }
+    .npc-label.to   { color: #10b981; }
+    .npc-name { font-size: 17px; font-weight: 700; color: #111; margin-bottom: 2px; }
+    .npc-sub  { font-size: 13px; color: #999; }
+    /* 목적지 선택 카드 (비어있을 때) */
+    .npc-empty {
+      background: white; border-radius: 12px; padding: 14px 16px;
+      margin-bottom: 10px; border: 2px dashed #e5e7eb; cursor: pointer;
+    }
+    .npc-empty-text { font-size: 15px; color: #aaa; text-align: center; padding: 8px 0; }
+
+    /* 층수 이동 배지 */
+    .floor-diff-badge {
+      background: #fef9c3; border: 1.5px solid #fde047;
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .fdb-icon { font-size: 22px; }
+    .fdb-text { font-size: 14px; color: #78350f; line-height: 1.5; }
+    .fdb-text strong { font-weight: 700; }
+
+    /* 경로 스텝 */
+    .route-steps-title { font-size: 13px; font-weight: 700; color: #666; margin-bottom: 10px; padding-left: 2px; }
+    .route-step {
+      display: flex; align-items: flex-start; gap: 12px;
+      background: white; border-radius: 10px; padding: 12px 14px;
+      margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .rs-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .rs-content { flex: 1; }
+    .rs-num { font-size: 11px; color: #aaa; margin-bottom: 2px; }
+    .rs-text { font-size: 14px; color: #222; line-height: 1.55; font-weight: 500; }
+    .rs-sub  { font-size: 12px; color: #999; margin-top: 2px; }
+
+    /* 같은 층일 때 강조 */
+    .same-floor-note {
+      background: #ecfdf5; border-radius: 10px; padding: 12px 14px;
+      border: 1.5px solid #6ee7b7; margin-bottom: 12px;
+      font-size: 14px; color: #065f46; display: flex; align-items: center; gap: 8px;
+    }
+
+    /* 목적지 검색 패널 */
+    .dest-search-panel {
+      display: none; position: fixed; inset: 0;
+      background: #f9f9f9; z-index: 160; overflow-y: auto;
+    }
+    .dest-search-panel.open { display: block; }
+    .dsp-header {
+      background: white; padding: 14px 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      display: flex; align-items: center; gap: 10px;
+      position: sticky; top: 0;
+    }
+    .dsp-search {
+      flex: 1; display: flex; align-items: center;
+      background: #f2f2f2; border-radius: 20px; padding: 9px 14px; gap: 8px;
+    }
+    .dsp-input {
+      border: none; background: transparent; font-size: 15px;
+      color: #333; width: 100%; outline: none; font-family: inherit;
+    }
+    .dsp-cancel { background: none; border: none; color: #2563eb; font-size: 14px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
+    .dsp-list { padding: 10px 16px 60px; }
+  </style>
+</head>
+
+<body>
+
+<!-- ── 헤더 ── -->
+<div class="header">
+  <div class="header-row">
+    <div class="search-box">
+      <span style="font-size:16px;color:#888;flex-shrink:0">🔍</span>
+      <input class="search-input" type="text" placeholder="장소를 검색해보세요" oninput="onSearch(this.value)"/>
+    </div>
+    <!-- QR 스캔 버튼 -->
+    <button class="qr-btn" onclick="openQRScanner()" title="QR 스캔">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/>
+        <rect x="19" y="14" width="2" height="2"/><rect x="17" y="19" width="4" height="2"/>
+        <rect x="14" y="17" width="2" height="4"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- ── 현재 위치 배너 (QR 스캔 후 표시) ── -->
+<div class="current-loc-banner" id="current-loc-banner">
+  <span class="clb-icon">📍</span>
+  <div class="clb-info">
+    <div class="clb-label">현재 위치</div>
+    <div class="clb-name" id="clb-name">-</div>
+    <div class="clb-floor" id="clb-floor">-</div>
+  </div>
+  <button class="clb-clear" onclick="clearCurrentLocation()" title="현재 위치 지우기">✕</button>
+</div>
+
+<!-- ── 메인 문구 ── -->
+<div class="main-content">
+  <p class="main-text">원하는 장소를 쉽게 찾아보세요</p>
+  <p class="sub-text">검색하거나 아래 목록에서 선택하세요</p>
+</div>
+
+<!-- ── 장소 목록 ── -->
+<div class="list-wrap">
+  <p class="list-label" id="list-label">전체 장소</p>
+  <div id="place-list"></div>
+</div>
+
+<!-- ── 장소 상세 팝업 ── -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title"></span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <span class="modal-badge" id="modal-badge"></span>
+    <div class="modal-divider"></div>
+    <div id="modal-body"></div>
+    <!-- 팝업 내 경로 안내 버튼들 -->
+    <div id="modal-nav-btns" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<!-- ── QR 스캐너 팝업 ── -->
+<div class="qr-modal-backdrop" id="qr-modal-backdrop" onclick="closeQRModal(event)">
+  <div class="qr-modal">
+    <div class="qr-modal-handle"></div>
+    <div class="qr-modal-top">
+      <span class="qr-modal-title">QR 코드 스캔</span>
+      <button class="qr-close-btn" onclick="closeQRModal()">✕</button>
+    </div>
+    <div class="qr-video-wrap">
+      <video id="qr-video" autoplay playsinline muted></video>
+      <div class="qr-scan-overlay">
+        <div class="qr-scan-frame"><span></span></div>
+      </div>
+    </div>
+    <p class="qr-hint">QR코드를 네모 안에 맞춰주세요</p>
+    <p class="qr-status" id="qr-status"></p>
+  </div>
+</div>
+
+<!-- ── 경로 안내 화면 ── -->
+<div class="nav-screen" id="nav-screen">
+  <div class="nav-header">
+    <button class="nav-back-btn" onclick="closeNavScreen()">←</button>
+    <span class="nav-header-title">경로 안내</span>
+  </div>
+  <div class="nav-body" id="nav-body"></div>
+</div>
+
+<!-- ── 목적지 검색 패널 ── -->
+<div class="dest-search-panel" id="dest-search-panel">
+  <div class="dsp-header">
+    <div class="dsp-search">
+      <span style="font-size:15px;color:#888;flex-shrink:0">🔍</span>
+      <input class="dsp-input" id="dsp-input" type="text" placeholder="목적지 검색..." oninput="onDestSearch(this.value)" autofocus/>
+    </div>
+    <button class="dsp-cancel" onclick="closeDestSearch()">취소</button>
+  </div>
+  <div class="dsp-list" id="dsp-list"></div>
+</div>
+
+<!-- jsQR 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+<script>
+/* =====================================================
+   강동고등학교 전체 장소 데이터
+   ===================================================== */
+const PLACES = [
+  /* ── 1층 ── */
+  { name:'교문',             floor:1, type:'출입구',   zone:'entrance',
+    details:{icon:'🚪', location:'건물 정면 입구', desc:'학교 정문입니다. 등하교 시 출입 가능합니다.'} },
+  { name:'지킴이실',         floor:1, type:'행정',     zone:'entrance',
+    details:{icon:'👮', location:'교문 옆', desc:'학교 안전 담당 선생님이 계십니다.'} },
+  { name:'식당구역',         floor:1, type:'편의시설', zone:'dining',
+    details:{icon:'🍽️', location:'1층 좌측', desc:'점심 급식이 이루어지는 공간입니다.'} },
+  { name:'매점',             floor:1, type:'편의시설', zone:'dining',
+    details:{icon:'🛒', location:'1층 중앙', desc:'간식 및 학용품을 구매할 수 있습니다.'} },
+  { name:'로비',             floor:1, type:'공용공간', zone:'lobby',
+    details:{icon:'🏛️', location:'1층 중앙 복도', desc:'주 출입 로비입니다.'} },
+  { name:'당직실',           floor:1, type:'행정',     zone:'lobby',
+    details:{icon:'🔑', location:'로비 옆', desc:'야간·주말 당직 선생님이 계십니다.'} },
+  { name:'조회대',           floor:1, type:'공용공간', zone:'lobby',
+    details:{icon:'📢', location:'1층 로비 앞', desc:'전교 조회 및 행사 진행 공간입니다.'} },
+  { name:'행정실',           floor:1, type:'행정',     zone:'admin',
+    details:{icon:'📋', location:'1층 복도 우측', desc:'증명서 발급, 학적 업무 처리. 운영시간: 평일 09:00~17:00'} },
+  { name:'교장실',           floor:1, type:'행정',     zone:'admin',
+    details:{icon:'👔', location:'행정실 옆', desc:'교장 선생님 사무실입니다. 방문 전 사전 예약 필요.'} },
+  { name:'문서고',           floor:1, type:'행정',     zone:'admin',
+    details:{icon:'🗂️', location:'1층 복도', desc:'학교 문서 보관 공간입니다.'} },
+  { name:'인쇄실',           floor:1, type:'행정',     zone:'admin',
+    details:{icon:'🖨️', location:'1층 복도', desc:'학교 인쇄 업무 전용 공간입니다.'} },
+  { name:'보건실',           floor:1, type:'편의시설', zone:'admin',
+    details:{icon:'🩺', location:'1층 복도 끝', desc:'아플 때 방문하세요. 운영시간: 평일 08:30~17:00'} },
+  { name:'통합교육지원실 1', floor:1, type:'교실',     zone:'special',
+    details:{icon:'🏫', location:'1층 우측 복도', desc:'특수·통합 교육 지원 교실입니다.'} },
+  { name:'통합교육지원실 2', floor:1, type:'교실',     zone:'special',
+    details:{icon:'🏫', location:'1층 우측 복도', desc:'특수·통합 교육 지원 교실입니다.'} },
+  { name:'통합교육지원실 3', floor:1, type:'교실',     zone:'special',
+    details:{icon:'🏫', location:'1층 우측 복도', desc:'특수·통합 교육 지원 교실입니다.'} },
+  { name:'통합교육지원실 4', floor:1, type:'교실',     zone:'special',
+    details:{icon:'🏫', location:'1층 우측 복도', desc:'특수·통합 교육 지원 교실입니다.'} },
+  { name:'특수교육교무실',   floor:1, type:'행정',     zone:'special',
+    details:{icon:'📌', location:'1층 우측', desc:'특수교육 담당 교무실입니다.'} },
+  { name:'생활교육실',       floor:1, type:'교실',     zone:'special',
+    details:{icon:'📖', location:'1층 우측', desc:'생활 교육 전용 교실입니다.'} },
+  { name:'직업교육실',       floor:1, type:'교실',     zone:'special',
+    details:{icon:'🔧', location:'1층 우측', desc:'직업 교육 전용 교실입니다.'} },
+  { name:'시청각실',         floor:1, type:'강의실',   zone:'special',
+    details:{icon:'📽️', location:'1층 우측', desc:'영상·음향 시설이 갖춰진 강의실입니다.'} },
+  { name:'방송실',           floor:1, type:'특별실',   zone:'lobby',
+    details:{icon:'📻', location:'1층 복도', desc:'교내 방송 운영 공간입니다.'} },
+  { name:'휴게실',           floor:1, type:'편의시설', zone:'lobby',
+    details:{icon:'☕', location:'1층 복도', desc:'교직원 휴게 공간입니다.'} },
+
+  /* ── 2층 ── */
+  { name:'1-1반', floor:2, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'2층 좌측 복도', desc:'1학년 1반 교실입니다.'} },
+  { name:'1-2반', floor:2, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'2층 좌측 복도', desc:'1학년 2반 교실입니다.'} },
+  { name:'1-3반', floor:2, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'2층 좌측 복도', desc:'1학년 3반 교실입니다.'} },
+  { name:'1-4반', floor:2, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'2층 좌측 복도', desc:'1학년 4반 교실입니다.'} },
+  { name:'1학년실',        floor:2, type:'행정',     zone:'left_class',
+    details:{icon:'📋', location:'2층 복도', desc:'1학년 담당 교무 행정실입니다.'} },
+  { name:'1-5반',          floor:2, type:'1학년 교실', zone:'right_study',
+    details:{icon:'🏫', location:'2층 우측 (진로진학상담실 맞은편)', desc:'1학년 5반 교실입니다.'} },
+  { name:'홈베이스',       floor:2, type:'공용공간', zone:'center',
+    details:{icon:'🏠', location:'2층 중앙', desc:'학생 자유 이용 공간입니다. 쉬는 시간 이용 가능.'} },
+  { name:'교무실',         floor:2, type:'행정',     zone:'center',
+    details:{icon:'👩‍🏫', location:'2층 중앙', desc:'선생님들이 계신 교무실입니다. 운영시간: 평일 08:00~18:00'} },
+  { name:'진로진학상담실', floor:2, type:'상담실',   zone:'right_study',
+    details:{icon:'🎓', location:'2층 우측', desc:'진로·진학 관련 상담을 받을 수 있습니다.'} },
+  { name:'종합학습실 1',   floor:2, type:'학습공간', zone:'right_study',
+    details:{icon:'📚', location:'2층 우측', desc:'자기주도학습 및 그룹학습 공간입니다.'} },
+  { name:'서버실',         floor:2, type:'기타',     zone:'right_study',
+    details:{icon:'🖥️', location:'2층 우측', desc:'학교 네트워크 서버 관리 공간입니다. 출입 제한.'} },
+  { name:'진로활동실',     floor:2, type:'특별실',   zone:'right_study',
+    details:{icon:'🔭', location:'2층 우측 끝', desc:'진로 탐색 및 활동 전용 공간입니다.'} },
+  { name:'도서관',         floor:2, type:'학습공간', zone:'right_study',
+    details:{icon:'📖', location:'2층 우측 끝', desc:'도서 대출 및 자습 가능. 운영시간: 평일 08:00~18:00'} },
+  { name:'평가실',         floor:2, type:'특별실',   zone:'lower_right',
+    details:{icon:'📝', location:'2층 하단', desc:'시험·평가 전용 공간입니다.'} },
+  { name:'협의실',         floor:2, type:'특별실',   zone:'lower_right',
+    details:{icon:'🤝', location:'2층 하단', desc:'소그룹 회의 및 협의 공간입니다.'} },
+  { name:'컴퓨터실습실',   floor:2, type:'특별실',   zone:'lower_right',
+    details:{icon:'💻', location:'2층 하단', desc:'PC 실습 수업 전용 공간입니다.'} },
+  { name:'정보과연구실',   floor:2, type:'연구실',   zone:'lower_right',
+    details:{icon:'🔬', location:'2층 하단', desc:'정보 교과 연구실입니다.'} },
+  { name:'강당',           floor:2, type:'공용공간', zone:'hall',
+    details:{icon:'🎭', location:'2층 좌측 별관', desc:'체육 수업 및 학교 행사 진행 공간입니다.'} },
+  { name:'체육과연구실',   floor:2, type:'연구실',   zone:'hall',
+    details:{icon:'⚽', location:'강당 옆', desc:'체육 교과 연구실입니다.'} },
+  { name:'샤워실',         floor:2, type:'편의시설', zone:'hall',
+    details:{icon:'🚿', location:'강당 옆', desc:'체육 수업 후 이용 가능한 샤워실입니다.'} },
+
+  /* ── 3층 ── */
+  { name:'1-6반', floor:3, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'3층 좌측 복도', desc:'1학년 6반 교실입니다.'} },
+  { name:'1-7반', floor:3, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'3층 좌측 복도', desc:'1학년 7반 교실입니다.'} },
+  { name:'1-8반', floor:3, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'3층 좌측 복도', desc:'1학년 8반 교실입니다.'} },
+  { name:'1-9반', floor:3, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'3층 좌측 복도', desc:'1학년 9반 교실입니다.'} },
+  { name:'1-10반',         floor:3, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'3층 좌측 끝', desc:'1학년 10반 교실입니다.'} },
+  { name:'수석교사실',     floor:3, type:'행정',     zone:'center',
+    details:{icon:'👩‍🏫', location:'3층 복도', desc:'수석교사 선생님 사무실입니다.'} },
+  { name:'소형홈베이스',   floor:3, type:'공용공간', zone:'center',
+    details:{icon:'🏠', location:'3층 중앙', desc:'소규모 학생 자유 이용 공간입니다.'} },
+  { name:'온라인수업제작실', floor:3, type:'특별실', zone:'center',
+    details:{icon:'🎬', location:'3층 중앙', desc:'온라인 수업 영상 촬영·편집 공간입니다.'} },
+  { name:'수업카페',       floor:3, type:'편의시설', zone:'center',
+    details:{icon:'☕', location:'3층 중앙', desc:'학생 휴식 및 소통 공간입니다.'} },
+  { name:'미술실',         floor:3, type:'특별실',   zone:'art_science',
+    details:{icon:'🎨', location:'3층 좌측 하단', desc:'미술 수업 및 동아리 활동 공간입니다.'} },
+  { name:'기술준비실',     floor:3, type:'특별실',   zone:'right_special',
+    details:{icon:'🔩', location:'3층 우측', desc:'기술 교과 준비 공간입니다.'} },
+  { name:'기술실상상제작소', floor:3, type:'특별실', zone:'right_special',
+    details:{icon:'🛠️', location:'3층 우측', desc:'메이커 교육 및 창작 활동 공간입니다.'} },
+  { name:'가정실',         floor:3, type:'특별실',   zone:'right_special',
+    details:{icon:'🍳', location:'3층 우측', desc:'가정 교과 실습 수업 공간입니다.'} },
+  { name:'가정준비실',     floor:3, type:'특별실',   zone:'right_special',
+    details:{icon:'🧺', location:'3층 우측', desc:'가정 교과 실습 준비 공간입니다.'} },
+  { name:'과학실 1',       floor:3, type:'특별실',   zone:'art_science',
+    details:{icon:'🔬', location:'3층 하단 복도', desc:'과학 실험 수업 전용 공간입니다.'} },
+  { name:'과학실 2',       floor:3, type:'특별실',   zone:'art_science',
+    details:{icon:'🔬', location:'3층 하단 복도', desc:'과학 실험 수업 전용 공간입니다.'} },
+  { name:'과학실 3',       floor:3, type:'특별실',   zone:'art_science',
+    details:{icon:'🔬', location:'3층 하단 복도', desc:'과학 실험 수업 전용 공간입니다.'} },
+  { name:'과학교과연구실', floor:3, type:'연구실',   zone:'art_science',
+    details:{icon:'⚗️', location:'3층 하단 복도', desc:'과학 교과 연구실입니다.'} },
+  { name:'과학준비실 1',   floor:3, type:'특별실',   zone:'art_science',
+    details:{icon:'🧪', location:'3층 하단 복도', desc:'과학 실험 준비 공간입니다. 출입 제한.'} },
+  { name:'과학준비실 2',   floor:3, type:'특별실',   zone:'art_science',
+    details:{icon:'📊', location:'3층 하단', desc:'과학 교육 자료 및 준비 공간입니다.'} },
+  { name:'남자휴게실',     floor:3, type:'편의시설', zone:'right_special',
+    details:{icon:'🚹', location:'3층 우측 복도', desc:'남학생 전용 휴게 공간입니다.'} },
+  { name:'여자휴게실',     floor:3, type:'편의시설', zone:'right_special',
+    details:{icon:'🚺', location:'3층 우측 복도', desc:'여학생 전용 휴게 공간입니다.'} },
+
+  /* ── 4층 ── */
+  { name:'2-1반', floor:4, type:'2학년 교실', zone:'lower_class',
+    details:{icon:'🏫', location:'4층 하단 복도', desc:'2학년 1반 교실입니다.'} },
+  { name:'2-2반', floor:4, type:'2학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'4층 좌측 복도', desc:'2학년 2반 교실입니다.'} },
+  { name:'2-3반', floor:4, type:'2학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'4층 좌측 복도', desc:'2학년 3반 교실입니다.'} },
+  { name:'2-4반', floor:4, type:'2학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'4층 좌측 복도', desc:'2학년 4반 교실입니다.'} },
+  { name:'2-5반', floor:4, type:'2학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'4층 좌측 복도', desc:'2학년 5반 교실입니다.'} },
+  { name:'2-6반', floor:4, type:'2학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'4층 우측 복도', desc:'2학년 6반 교실입니다.'} },
+  { name:'2-7반', floor:4, type:'2학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'4층 우측 복도', desc:'2학년 7반 교실입니다.'} },
+  { name:'2-8반', floor:4, type:'2학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'4층 우측 복도', desc:'2학년 8반 교실입니다.'} },
+  { name:'2-9반', floor:4, type:'2학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'4층 우측 복도', desc:'2학년 9반 교실입니다.'} },
+  { name:'2학년실',        floor:4, type:'행정',     zone:'left_class',
+    details:{icon:'📋', location:'4층 복도', desc:'2학년 담당 교무 행정실입니다.'} },
+  { name:'홈베이스',       floor:4, type:'공용공간', zone:'center',
+    details:{icon:'🏠', location:'4층 중앙', desc:'학생 자유 이용 공간입니다.'} },
+  { name:'음악실',         floor:4, type:'특별실',   zone:'lower_class',
+    details:{icon:'🎵', location:'4층 좌측', desc:'음악 수업 및 악기 연습 공간입니다. 방음 처리 완비.'} },
+  { name:'그룹학습실',     floor:4, type:'학습공간', zone:'right_class',
+    details:{icon:'👥', location:'4층 우측', desc:'소그룹 학습 및 협동 학습 공간입니다.'} },
+  { name:'다목적수업교실', floor:4, type:'강의실',   zone:'lower_class',
+    details:{icon:'🏫', location:'4층 하단', desc:'다양한 수업 방식에 활용 가능한 교실입니다.'} },
+  { name:'중형강의실',     floor:4, type:'강의실',   zone:'lower_class',
+    details:{icon:'🎤', location:'4층 하단', desc:'중형 규모 강의 및 발표 공간입니다.'} },
+  { name:'위클래스상담실', floor:4, type:'상담실',   zone:'lower_class',
+    details:{icon:'💙', location:'4층 하단 우측', desc:'학생 심리·정서 상담 공간입니다. 언제든지 방문 가능.'} },
+  { name:'생활안전교육부', floor:4, type:'행정',     zone:'lower_class',
+    details:{icon:'🛡️', location:'4층 하단', desc:'학생 생활지도 및 안전 교육 담당 부서입니다.'} },
+
+  /* ── 5층 ── */
+  { name:'3-1반', floor:5, type:'3학년 교실', zone:'lower_class',
+    details:{icon:'🏫', location:'5층 하단 복도', desc:'3학년 1반 교실입니다.'} },
+  { name:'3-2반', floor:5, type:'3학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'5층 좌측 복도', desc:'3학년 2반 교실입니다.'} },
+  { name:'3-3반', floor:5, type:'3학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'5층 좌측 복도', desc:'3학년 3반 교실입니다.'} },
+  { name:'3-4반', floor:5, type:'3학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'5층 좌측 복도', desc:'3학년 4반 교실입니다.'} },
+  { name:'3-5반', floor:5, type:'3학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'5층 좌측 복도', desc:'3학년 5반 교실입니다.'} },
+  { name:'3-6반', floor:5, type:'3학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'5층 우측 복도', desc:'3학년 6반 교실입니다.'} },
+  { name:'3-7반', floor:5, type:'3학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'5층 우측 복도', desc:'3학년 7반 교실입니다.'} },
+  { name:'3-8반', floor:5, type:'3학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'5층 우측 복도', desc:'3학년 8반 교실입니다.'} },
+  { name:'3-9반', floor:5, type:'3학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'5층 우측 복도', desc:'3학년 9반 교실입니다.'} },
+  { name:'3학년실',        floor:5, type:'행정',     zone:'left_class',
+    details:{icon:'📋', location:'5층 복도', desc:'3학년 담당 교무 행정실입니다.'} },
+  { name:'홈베이스',       floor:5, type:'공용공간', zone:'center',
+    details:{icon:'🏠', location:'5층 중앙', desc:'학생 자유 이용 공간입니다.'} },
+  { name:'다목적실',       floor:5, type:'강의실',   zone:'lower_class',
+    details:{icon:'🏫', location:'5층 하단 좌측', desc:'다목적 강의·행사 공간입니다.'} },
+  { name:'자습실',         floor:5, type:'학습공간', zone:'lower_class',
+    details:{icon:'✏️', location:'5층 하단', desc:'자기주도 학습 공간입니다. 운영시간 확인 필요.'} },
+  { name:'대형강의실',     floor:5, type:'강의실',   zone:'lower_class',
+    details:{icon:'🎤', location:'5층 하단 우측', desc:'대형 강의 및 특강 진행 공간입니다.'} },
+  { name:'IT·토론학습실',  floor:5, type:'학습공간', zone:'lower_class',
+    details:{icon:'💻', location:'5층 하단 우측', desc:'IT 활용 수업 및 토론 학습 공간입니다.'} },
+  { name:'진학상담실',     floor:5, type:'상담실',   zone:'right_class',
+    details:{icon:'🎓', location:'5층 우측', desc:'대입 진학 관련 상담 공간입니다.'} },
+];
+
+/* =====================================================
+   구역(zone)별 방향 설명 데이터
+   ===================================================== */
+const ZONE_DESC = {
+  /* 1층 */
+  'entrance': '교문 쪽',
+  'dining':   '식당 방향 (1층 좌측)',
+  'lobby':    '로비·행정 구역 (1층 하단)',
+  'admin':    '행정실 복도 (1층 하단 우측)',
+  'special':  '우측 복도 (통합교육지원실 구역)',
+
+  /* 2층 */
+  'left_class':  '좌측 복도 (계단에서 직진)',
+  'right_study': '우측 복도 (EV·계단에서 우회전)',
+  'center':      '중앙 홈베이스 구역',
+  'lower_right': '하단 복도 (계단에서 내려온 후 우측)',
+  'hall':        '강당 방향 (강당연결통로)',
+
+  /* 3층 */
+  'right_special': '우측 복도 (기술·가정실 구역)',
+  'art_science':   '하단 복도 (미술실·과학실 구역)',
+
+  /* 4층/5층 */
+  'right_class':  '우측 복도 (EV·계단에서 우회전)',
+  'lower_class':  '하단 복도 (아래쪽 계단에서 진입)',
+};
+
+/* =====================================================
+   구역 간 계단/EV 선택 안내
+   zone → 추천 이동 수단
+   ===================================================== */
+function getStairsAdvice(fromPlace, toPlace) {
+  const fz = fromPlace.zone, tz = toPlace.zone;
+  const ff = fromPlace.floor, tf = toPlace.floor;
+  // 하단 구역 → 하단 계단 권장
+  if (fz === 'lower_class' || tz === 'lower_class' ||
+      fz === 'art_science'  || tz === 'art_science' ||
+      fz === 'hall'         || tz === 'hall') {
+    return '하단 계단(아래쪽 비상구 방향)';
+  }
+  // 우측 구역 → 중앙 EV/계단 권장
+  if (fz === 'right_class' || tz === 'right_class' ||
+      fz === 'right_study'  || tz === 'right_study') {
+    return '중앙 계단 또는 EV';
+  }
+  // 기본: 좌측 계단
+  return '좌측 계단 또는 EV';
+}
+
+/* =====================================================
+   경로 계산 함수
+   ===================================================== */
+function calculateRoute(fromName, toName) {
+  const from = PLACES.find(p => p.name === fromName);
+  const to   = PLACES.find(p => p.name === toName);
+  if (!from || !to) return [];
+
+  const steps = [];
+  const floorDiff = to.floor - from.floor;
+  const goUp = floorDiff > 0;
+  const sameFloor = floorDiff === 0;
+  const stairsAdvice = getStairsAdvice(from, to);
+
+  /* 1. 출발 */
+  steps.push({
+    icon: '📍',
+    num: 1,
+    text: `${from.name}에서 출발합니다`,
+    sub: `${from.floor}층 · ${from.type}`
+  });
+
+  if (sameFloor) {
+    /* ── 같은 층 ── */
+    if (from.zone === to.zone) {
+      steps.push({
+        icon: '🚶',
+        num: 2,
+        text: `같은 구역입니다. 복도를 따라 이동합니다`,
+        sub: ZONE_DESC[to.zone] || ''
+      });
+    } else {
+      steps.push({
+        icon: '🚶',
+        num: 2,
+        text: `${from.floor}층 복도를 따라 이동합니다`,
+        sub: `${ZONE_DESC[from.zone] || from.zone} → ${ZONE_DESC[to.zone] || to.zone}`
+      });
+    }
+  } else {
+    /* ── 다른 층 ── */
+    /* 2. 계단/EV 이동 */
+    steps.push({
+      icon: '🚶',
+      num: 2,
+      text: `${stairsAdvice} 방향으로 이동합니다`,
+      sub: `현재 ${from.floor}층`
+    });
+
+    /* 3. 층 이동 */
+    const floorAbs = Math.abs(floorDiff);
+    steps.push({
+      icon: goUp ? '⬆️' : '⬇️',
+      num: 3,
+      text: `계단 또는 EV를 이용해 ${to.floor}층으로 ${goUp ? '올라갑니다' : '내려갑니다'}`,
+      sub: `${floorAbs}층 ${goUp ? '위' : '아래'} · 계단이용 시 약 ${floorAbs * 20}~${floorAbs * 30}초`
+    });
+
+    /* 4. 목적지 층 안내 */
+    steps.push({
+      icon: '🚶',
+      num: 4,
+      text: `${to.floor}층에서 ${ZONE_DESC[to.zone] || '목적지 방향'}으로 이동합니다`,
+      sub: to.details.location
+    });
+  }
+
+  /* 마지막: 도착 */
+  steps.push({
+    icon: '🎯',
+    num: sameFloor ? 3 : 5,
+    text: `${to.name} 도착!`,
+    sub: `${to.floor}층 · ${to.type}`
+  });
+
+  return steps;
+}
+
+/* =====================================================
+   현재 위치 관리
+   ===================================================== */
+let currentLocation = null; // 현재 위치 (장소 name)
+let navDestination  = null; // 경로 안내 목적지 (장소 name)
+
+function setCurrentLocation(name) {
+  const place = PLACES.find(p => p.name === name);
+  if (!place) return;
+  currentLocation = name;
+  /* 배너 업데이트 */
+  const banner = document.getElementById('current-loc-banner');
+  document.getElementById('clb-name').textContent = place.name;
+  document.getElementById('clb-floor').textContent = `${place.floor}층 · ${place.type}`;
+  banner.classList.add('visible');
+}
+
+function clearCurrentLocation() {
+  currentLocation = null;
+  document.getElementById('current-loc-banner').classList.remove('visible');
+}
+
+/* =====================================================
+   경로 안내 화면
+   ===================================================== */
+function openNavScreen(toName, fromName) {
+  /* fromName 우선순위: 인자 > QR 스캔 현재 위치 */
+  const resolvedFrom = fromName || currentLocation;
+  navDestination = toName;
+
+  const screen = document.getElementById('nav-screen');
+  screen.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  renderNavBody(resolvedFrom, toName);
+}
+
+function closeNavScreen() {
+  document.getElementById('nav-screen').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderNavBody(fromName, toName) {
+  const body = document.getElementById('nav-body');
+  const from = fromName ? PLACES.find(p => p.name === fromName) : null;
+  const to   = toName   ? PLACES.find(p => p.name === toName)   : null;
+
+  let html = '';
+
+  /* ── 출발지 카드 ── */
+  if (from) {
+    html += `<div class="nav-point-card">
+      <div class="npc-label from">📍 출발지</div>
+      <div class="npc-name">${from.name}</div>
+      <div class="npc-sub">${from.floor}층 · ${from.type}</div>
+    </div>`;
+  } else {
+    html += `<div class="npc-empty" onclick="openDestSearchForFrom()">
+      <div class="npc-empty-text">📍 출발지를 선택해주세요</div>
+    </div>`;
+  }
+
+  /* ── 목적지 카드 ── */
+  if (to) {
+    html += `<div class="nav-point-card">
+      <div class="npc-label to">🎯 목적지</div>
+      <div class="npc-name">${to.name}</div>
+      <div class="npc-sub">${to.floor}층 · ${to.type}</div>
+    </div>`;
+  } else {
+    html += `<div class="npc-empty" onclick="openDestSearch()">
+      <div class="npc-empty-text">🎯 목적지를 선택해주세요</div>
+    </div>`;
+  }
+
+  /* ── 경로 ── */
+  if (from && to) {
+    const floorDiff = Math.abs(to.floor - from.floor);
+
+    if (from.name === to.name) {
+      html += `<div class="same-floor-note">✅ 현재 위치가 목적지입니다!</div>`;
+    } else {
+      /* 층 이동 배지 */
+      if (floorDiff > 0) {
+        const arrow = to.floor > from.floor ? '⬆️' : '⬇️';
+        html += `<div class="floor-diff-badge">
+          <span class="fdb-icon">${arrow}</span>
+          <div class="fdb-text">
+            <strong>${from.floor}층 → ${to.floor}층</strong>으로 이동합니다<br>
+            ${floorDiff}층 ${to.floor > from.floor ? '위' : '아래'}
+          </div>
+        </div>`;
+      } else {
+        html += `<div class="same-floor-note">🟢 같은 층 (${from.floor}층)입니다</div>`;
+      }
+
+      /* 스텝 목록 */
+      const steps = calculateRoute(from.name, to.name);
+      html += `<p class="route-steps-title">단계별 안내</p>`;
+      steps.forEach(s => {
+        html += `<div class="route-step">
+          <span class="rs-icon">${s.icon}</span>
+          <div class="rs-content">
+            <div class="rs-num">${s.num}단계</div>
+            <div class="rs-text">${s.text}</div>
+            ${s.sub ? `<div class="rs-sub">${s.sub}</div>` : ''}
+          </div>
+        </div>`;
+      });
+    }
+  } else if (from || to) {
+    html += `<p style="text-align:center;color:#aaa;padding:20px;font-size:14px;">
+      ${from ? '목적지를' : '출발지를'} 선택하면 경로를 안내해 드립니다
+    </p>`;
+  }
+
+  body.innerHTML = html;
+}
+
+/* =====================================================
+   목적지 검색 패널
+   ===================================================== */
+let destSearchMode = 'to'; // 'to' or 'from'
+
+function openDestSearch() {
+  destSearchMode = 'to';
+  _openDestSearchPanel();
+}
+function openDestSearchForFrom() {
+  destSearchMode = 'from';
+  _openDestSearchPanel();
+}
+function _openDestSearchPanel() {
+  document.getElementById('dest-search-panel').classList.add('open');
+  document.getElementById('dsp-input').value = '';
+  renderDestList('');
+  setTimeout(() => document.getElementById('dsp-input').focus(), 100);
+}
+function closeDestSearch() {
+  document.getElementById('dest-search-panel').classList.remove('open');
+}
+function onDestSearch(kw) { renderDestList(kw); }
+
+function renderDestList(kw) {
+  const filtered = PLACES.filter(p =>
+    !kw || p.name.includes(kw.trim()) || p.type.includes(kw.trim())
+  );
+  const wrap = document.getElementById('dsp-list');
+  if (!filtered.length) {
+    wrap.innerHTML = '<div class="no-result">😥 검색 결과가 없어요</div>';
+    return;
+  }
+  wrap.innerHTML = filtered.map(p => `
+    <div class="place-card" onclick="selectDest('${p.name.replace(/'/g,"\\'")}')">
+      <div class="floor-badge">${p.floor}층</div>
+      <div class="place-info">
+        <div class="place-name">${p.name}</div>
+        <div class="place-desc">${p.floor}층 · ${p.type}</div>
+      </div>
+    </div>`).join('');
+}
+
+function selectDest(name) {
+  closeDestSearch();
+  if (destSearchMode === 'from') {
+    renderNavBody(name, navDestination);
+  } else {
+    navDestination = name;
+    const from = currentLocation;
+    renderNavBody(from, name);
+  }
+}
+
+/* =====================================================
+   QR 스캐너
+   ===================================================== */
+let qrStream = null;
+let qrLoop   = null;
+const qrCanvas = document.createElement('canvas');
+const qrCtx    = qrCanvas.getContext('2d');
+
+function openQRScanner() {
+  document.getElementById('qr-modal-backdrop').classList.add('open');
+  document.getElementById('qr-status').textContent = '';
+  startQRCamera();
+}
+function closeQRModal(e) {
+  if (e && e.target !== document.getElementById('qr-modal-backdrop')) return;
+  _stopQRCamera();
+  document.getElementById('qr-modal-backdrop').classList.remove('open');
+}
+
+async function startQRCamera() {
+  try {
+    qrStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
+    });
+    const video = document.getElementById('qr-video');
+    video.srcObject = qrStream;
+    qrLoop = requestAnimationFrame(qrTick);
+  } catch(e) {
+    document.getElementById('qr-status').textContent = '카메라 접근 실패: ' + e.message;
+  }
+}
+function _stopQRCamera() {
+  if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
+  if (qrLoop)   { cancelAnimationFrame(qrLoop); qrLoop = null; }
+}
+
+let lastQR = null, pauseUntil = 0;
+function qrTick() {
+  qrLoop = requestAnimationFrame(qrTick);
+  if (Date.now() < pauseUntil) return;
+  const video = document.getElementById('qr-video');
+  if (video.readyState < video.HAVE_ENOUGH_DATA) return;
+  qrCanvas.width  = video.videoWidth;
+  qrCanvas.height = video.videoHeight;
+  qrCtx.drawImage(video, 0, 0);
+  const img = qrCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
+  const result = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+  if (result && result.data !== lastQR) {
+    lastQR = result.data;
+    pauseUntil = Date.now() + 2500;
+    handleQRResult(result.data);
+  }
+}
+
+function handleQRResult(raw) {
+  /* QR에 장소 이름이 직접 들어있거나 "LOC:장소이름" 형식 */
+  const name = raw.startsWith('LOC:') ? raw.slice(4) : raw;
+  const place = PLACES.find(p => p.name === name);
+
+  if (place) {
+    document.getElementById('qr-status').textContent = `✅ ${place.name} 인식 완료!`;
+    setTimeout(() => {
+      _stopQRCamera();
+      document.getElementById('qr-modal-backdrop').classList.remove('open');
+      setCurrentLocation(place.name);
+    }, 800);
+  } else {
+    document.getElementById('qr-status').textContent = `⚠️ "${name}" — 등록된 장소를 찾지 못했어요`;
+    setTimeout(() => { lastQR = null; }, 2500);
+  }
+}
+
+/* =====================================================
+   기존 기능: 목록 + 팝업
+   ===================================================== */
+function init() { renderList(PLACES, '전체 장소'); }
+
+function onSearch(kw) {
+  if (!kw.trim()) { renderList(PLACES, '전체 장소'); return; }
+  const filtered = PLACES.filter(p =>
+    p.name.includes(kw.trim()) || p.type.includes(kw.trim())
+  );
+  renderList(filtered, `검색 결과 ${filtered.length}개`);
+}
+
+function renderList(places, label) {
+  document.getElementById('list-label').textContent = label;
+  const wrap = document.getElementById('place-list');
+  if (!places.length) {
+    wrap.innerHTML = '<div class="no-result">😥 검색 결과가 없어요</div>'; return;
+  }
+  wrap.innerHTML = places.map(p => `
+    <div class="place-card" onclick="openModal(${PLACES.indexOf(p)})">
+      <div class="floor-badge">${p.floor}층</div>
+      <div class="place-info">
+        <div class="place-name">${p.name}</div>
+        <div class="place-desc">${p.floor}층 · ${p.type}</div>
+      </div>
+    </div>`).join('');
+}
+
+function openModal(idx) {
+  const p = PLACES[idx], d = p.details;
+  const floor = `${p.floor}층 · ${p.type}`;
+
+  document.getElementById('modal-title').textContent = d.icon + ' ' + p.name;
+  document.getElementById('modal-badge').textContent = floor;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-row">
+      <span class="modal-row-icon">📍</span>
+      <div class="modal-row-content">
+        <div class="modal-row-label">위치</div>
+        <div class="modal-row-value">${d.location}</div>
+      </div>
+    </div>
+    <div class="modal-row">
+      <span class="modal-row-icon">ℹ️</span>
+      <div class="modal-row-content">
+        <div class="modal-row-label">안내</div>
+        <div class="modal-row-value">${d.desc}</div>
+      </div>
+    </div>`;
+
+  /* 팝업 내 경로 버튼 */
+  const btnArea = document.getElementById('modal-nav-btns');
+  const hasCurrent = !!currentLocation && currentLocation !== p.name;
+  btnArea.innerHTML = `
+    ${hasCurrent
+      ? `<button class="nav-to-btn" onclick="closeModal();openNavScreen('${p.name.replace(/'/g,"\\'")}')">🗺️ 여기까지 경로 안내</button>`
+      : `<button class="nav-to-btn" onclick="closeModal();setCurrentLocation('${p.name.replace(/'/g,"\\'")}');alert('현재 위치가 설정되었습니다!')">📍 현재 위치로 설정</button>`}
+    <button class="nav-from-btn" onclick="closeModal();openNavScreen(null,'${p.name.replace(/'/g,"\\'")}')">이곳에서 목적지 찾기 →</button>
+  `;
+
+  document.getElementById('modal-backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-backdrop')) return;
+  document.getElementById('modal-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
