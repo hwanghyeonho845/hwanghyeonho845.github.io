@@ -31,7 +31,7 @@
       background-color: white;
       padding: 14px 16px;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-      position: sticky; /* 스크롤해도 상단에 고정 */
+      position: sticky;
       top: 0;
       z-index: 100;
     }
@@ -94,7 +94,7 @@
       padding: 12px 16px 100px;
     }
 
-    /* 목록 라벨 (전체 장소 / 검색 결과 N개) */
+    /* 결과 개수 or 섹션 타이틀 */
     .list-label {
       font-size: 13px;
       color: #999;
@@ -195,7 +195,7 @@
       to   { transform: translateY(0); }
     }
 
-    /* 팝업 상단 핸들 바 */
+    /* 팝업 상단 핸들 바 (드래그 표시용) */
     .modal-handle {
       width: 40px;
       height: 4px;
@@ -348,29 +348,29 @@
     const PLACES = [
 
       /* ── 1층 ── */
-      { name: "교문",             floor: 1, type: "출입구",
+      { name: "교문",            floor: 1, type: "출입구",
         details: { icon: "🚪", location: "건물 정면 입구", desc: "학교 정문입니다. 등하교 시 출입 가능합니다." }},
-      { name: "지킴이실",         floor: 1, type: "행정",
+      { name: "지킴이실",        floor: 1, type: "행정",
         details: { icon: "👮", location: "교문 옆", desc: "학교 안전 담당 선생님이 계십니다." }},
-      { name: "식당구역",         floor: 1, type: "편의시설",
+      { name: "식당구역",        floor: 1, type: "편의시설",
         details: { icon: "🍽️", location: "1층 좌측", desc: "점심 급식이 이루어지는 공간입니다." }},
-      { name: "매점",             floor: 1, type: "편의시설",
+      { name: "매점",            floor: 1, type: "편의시설",
         details: { icon: "🛒", location: "1층 중앙", desc: "간식 및 학용품을 구매할 수 있습니다." }},
-      { name: "로비",             floor: 1, type: "공용공간",
+      { name: "로비",            floor: 1, type: "공용공간",
         details: { icon: "🏛️", location: "1층 중앙 복도", desc: "주 출입 로비입니다." }},
-      { name: "당직실",           floor: 1, type: "행정",
+      { name: "당직실",          floor: 1, type: "행정",
         details: { icon: "🔑", location: "로비 옆", desc: "야간·주말 당직 선생님이 계십니다." }},
-      { name: "조회대",           floor: 1, type: "공용공간",
+      { name: "조회대",          floor: 1, type: "공용공간",
         details: { icon: "📢", location: "1층 로비 앞", desc: "전교 조회 및 행사 진행 공간입니다." }},
-      { name: "행정실",           floor: 1, type: "행정",
+      { name: "행정실",          floor: 1, type: "행정",
         details: { icon: "📋", location: "1층 복도 우측", desc: "증명서 발급, 학적 업무 처리. 운영시간: 평일 09:00~17:00" }},
-      { name: "교장실",           floor: 1, type: "행정",
+      { name: "교장실",          floor: 1, type: "행정",
         details: { icon: "👔", location: "행정실 옆", desc: "교장 선생님 사무실입니다. 방문 전 사전 예약 필요." }},
-      { name: "문서고",           floor: 1, type: "행정",
+      { name: "문서고",          floor: 1, type: "행정",
         details: { icon: "🗂️", location: "1층 복도", desc: "학교 문서 보관 공간입니다." }},
-      { name: "인쇄실",           floor: 1, type: "행정",
+      { name: "인쇄실",          floor: 1, type: "행정",
         details: { icon: "🖨️", location: "1층 복도", desc: "학교 인쇄 업무 전용 공간입니다." }},
-      { name: "보건실",           floor: 1, type: "편의시설",
+      { name: "보건실",          floor: 1, type: "편의시설",
         details: { icon: "🩺", location: "1층 복도 끝", desc: "아플 때 방문하세요. 운영시간: 평일 08:30~17:00" }},
       { name: "통합교육지원실 1", floor: 1, type: "교실",
         details: { icon: "🏫", location: "1층 우측 복도", desc: "특수·통합 교육 지원 교실입니다." }},
@@ -382,19 +382,19 @@
         details: { icon: "🏫", location: "1층 우측 복도", desc: "특수·통합 교육 지원 교실입니다." }},
       { name: "특수교육교무실",   floor: 1, type: "행정",
         details: { icon: "📌", location: "1층 우측", desc: "특수교육 담당 교무실입니다." }},
-      { name: "생활교육실",       floor: 1, type: "교실",
+      { name: "생활교육실",      floor: 1, type: "교실",
         details: { icon: "📖", location: "1층 우측", desc: "생활 교육 전용 교실입니다." }},
-      { name: "직업교육실",       floor: 1, type: "교실",
+      { name: "직업교육실",      floor: 1, type: "교실",
         details: { icon: "🔧", location: "1층 우측", desc: "직업 교육 전용 교실입니다." }},
-      { name: "시청각실",         floor: 1, type: "강의실",
+      { name: "시청각실",        floor: 1, type: "강의실",
         details: { icon: "📽️", location: "1층 우측", desc: "영상·음향 시설이 갖춰진 강의실입니다." }},
-      { name: "방송실",           floor: 1, type: "특별실",
+      { name: "방송실",          floor: 1, type: "특별실",
         details: { icon: "📻", location: "1층 복도", desc: "교내 방송 운영 공간입니다." }},
-      { name: "휴게실",           floor: 1, type: "편의시설",
+      { name: "휴게실",          floor: 1, type: "편의시설",
         details: { icon: "☕", location: "1층 복도", desc: "교직원 휴게 공간입니다." }},
-      { name: "화장실",           floor: 1, type: "편의시설",
+      { name: "화장실",          floor: 1, type: "편의시설",
         details: { icon: "🚻", location: "1층 복도", desc: "남녀 화장실이 구분되어 있습니다." }},
-      { name: "창고",             floor: 1, type: "기타",
+      { name: "창고",            floor: 1, type: "기타",
         details: { icon: "📦", location: "1층 복도 끝", desc: "물품 보관 창고입니다." }},
 
       /* ── 2층 ── */
@@ -414,9 +414,7 @@
         details: { icon: "👩‍🏫", location: "2층 중앙", desc: "선생님들이 계신 교무실입니다. 운영시간: 평일 08:00~18:00" }},
       { name: "진로진학상담실", floor: 2, type: "상담실",
         details: { icon: "🎓", location: "2층 우측", desc: "진로·진학 관련 상담을 받을 수 있습니다." }},
-      { name: "1-5반", floor: 2, type: "1학년 교실",
-        details: { icon: "🏫", location: "2층 우측 (진로진학상담실 맞은편)", desc: "1학년 5반 교실입니다." }},
-      { name: "종합학습실 1",   floor: 2, type: "학습공간",
+      { name: "종합학습실",     floor: 2, type: "학습공간",
         details: { icon: "📚", location: "2층 우측", desc: "자기주도학습 및 그룹학습 공간입니다." }},
       { name: "서버실",         floor: 2, type: "기타",
         details: { icon: "🖥️", location: "2층 우측", desc: "학교 네트워크 서버 관리 공간입니다. 출입 제한." }},
@@ -440,18 +438,18 @@
         details: { icon: "🚿", location: "강당 옆", desc: "체육 수업 후 이용 가능한 샤워실입니다." }},
 
       /* ── 3층 ── */
-      { name: "1-9반", floor: 3, type: "1학년 교실",
-        details: { icon: "🏫", location: "3층 좌측 복도", desc: "1학년 9반 교실입니다." }},
+      { name: "1-5반", floor: 3, type: "1학년 교실",
+        details: { icon: "🏫", location: "3층 좌측 복도", desc: "1학년 5반 교실입니다." }},
       { name: "1-6반", floor: 3, type: "1학년 교실",
         details: { icon: "🏫", location: "3층 좌측 복도", desc: "1학년 6반 교실입니다." }},
       { name: "1-7반", floor: 3, type: "1학년 교실",
         details: { icon: "🏫", location: "3층 좌측 복도", desc: "1학년 7반 교실입니다." }},
       { name: "1-8반", floor: 3, type: "1학년 교실",
         details: { icon: "🏫", location: "3층 좌측 복도", desc: "1학년 8반 교실입니다." }},
-      { name: "1-10반",           floor: 3, type: "1학년 교실",
-        details: { icon: "🏫", location: "3층 좌측 끝", desc: "1학년 10반 교실입니다." }},
-      { name: "수석교사실",       floor: 3, type: "행정",
-        details: { icon: "👩‍🏫", location: "3층 복도", desc: "수석교사 선생님 사무실입니다." }},
+      { name: "토론학습실",       floor: 3, type: "학습공간",
+        details: { icon: "💬", location: "3층 좌측 끝", desc: "토론 및 발표 수업 전용 공간입니다." }},
+      { name: "인문독서특색부실", floor: 3, type: "특별실",
+        details: { icon: "📕", location: "3층 복도", desc: "인문·독서 활동 전용 공간입니다." }},
       { name: "소형홈베이스",     floor: 3, type: "공용공간",
         details: { icon: "🏠", location: "3층 중앙", desc: "소규모 학생 자유 이용 공간입니다." }},
       { name: "온라인수업제작실", floor: 3, type: "특별실",
@@ -474,12 +472,12 @@
         details: { icon: "🔬", location: "3층 하단 복도", desc: "과학 실험 수업 전용 공간입니다." }},
       { name: "과학실 3",         floor: 3, type: "특별실",
         details: { icon: "🔬", location: "3층 하단 복도", desc: "과학 실험 수업 전용 공간입니다." }},
-      { name: "과학교과연구실",   floor: 3, type: "연구실",
+      { name: "과학과연구실",     floor: 3, type: "연구실",
         details: { icon: "⚗️", location: "3층 하단 복도", desc: "과학 교과 연구실입니다." }},
-      { name: "과학준비실 1",     floor: 3, type: "특별실",
-        details: { icon: "🧪", location: "3층 하단 복도", desc: "과학 실험 준비 공간입니다. 출입 제한." }},
-      { name: "과학준비실 2",     floor: 3, type: "특별실",
-        details: { icon: "📊", location: "3층 하단", desc: "과학 교육 자료 및 준비 공간입니다." }},
+      { name: "시약실",           floor: 3, type: "특별실",
+        details: { icon: "🧪", location: "3층 하단 복도", desc: "과학 실험 시약 보관 공간입니다. 출입 제한." }},
+      { name: "과학자료실",       floor: 3, type: "특별실",
+        details: { icon: "📊", location: "3층 하단", desc: "과학 교육 자료 보관·열람 공간입니다." }},
       { name: "남자휴게실",       floor: 3, type: "편의시설",
         details: { icon: "🚹", location: "3층 우측 복도", desc: "남학생 전용 휴게 공간입니다." }},
       { name: "여자휴게실",       floor: 3, type: "편의시설",
@@ -504,23 +502,23 @@
         details: { icon: "🏫", location: "4층 우측 복도", desc: "2학년 8반 교실입니다." }},
       { name: "2-9반", floor: 4, type: "2학년 교실",
         details: { icon: "🏫", location: "4층 우측 복도", desc: "2학년 9반 교실입니다." }},
-      { name: "2학년실",        floor: 4, type: "행정",
+      { name: "2학년실",       floor: 4, type: "행정",
         details: { icon: "📋", location: "4층 복도", desc: "2학년 담당 교무 행정실입니다." }},
-      { name: "홈베이스",       floor: 4, type: "공용공간",
+      { name: "홈베이스",      floor: 4, type: "공용공간",
         details: { icon: "🏠", location: "4층 중앙", desc: "학생 자유 이용 공간입니다." }},
-      { name: "음악실",         floor: 4, type: "특별실",
+      { name: "음악실",        floor: 4, type: "특별실",
         details: { icon: "🎵", location: "4층 좌측", desc: "음악 수업 및 악기 연습 공간입니다. 방음 처리 완비." }},
-      { name: "그룹학습실",     floor: 4, type: "학습공간",
+      { name: "그룹학습실",    floor: 4, type: "학습공간",
         details: { icon: "👥", location: "4층 우측", desc: "소그룹 학습 및 협동 학습 공간입니다." }},
       { name: "다목적수업교실", floor: 4, type: "강의실",
         details: { icon: "🏫", location: "4층 하단", desc: "다양한 수업 방식에 활용 가능한 교실입니다." }},
-      { name: "중형강의실",     floor: 4, type: "강의실",
+      { name: "중형강의실",    floor: 4, type: "강의실",
         details: { icon: "🎤", location: "4층 하단", desc: "중형 규모 강의 및 발표 공간입니다." }},
       { name: "위클래스상담실", floor: 4, type: "상담실",
         details: { icon: "💙", location: "4층 하단 우측", desc: "학생 심리·정서 상담 공간입니다. 언제든지 방문 가능." }},
       { name: "생활안전교육부", floor: 4, type: "행정",
         details: { icon: "🛡️", location: "4층 하단", desc: "학생 생활지도 및 안전 교육 담당 부서입니다." }},
-      { name: "양치실",         floor: 4, type: "편의시설",
+      { name: "양치실",        floor: 4, type: "편의시설",
         details: { icon: "🪥", location: "4층 복도", desc: "식사 후 양치 가능한 공간입니다." }},
 
       /* ── 5층 ── */
@@ -600,7 +598,7 @@
       }
 
       /* 카드 목록 생성 — onclick으로 팝업 열기 */
-      container.innerHTML = places.map(place => `
+      container.innerHTML = places.map((place, index) => `
         <div class="place-card" onclick="openModal(${PLACES.indexOf(place)})">
           <div class="floor-badge">${place.floor}층</div>
           <div class="place-info">
