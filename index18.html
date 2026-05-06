@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>학교 안내도</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Apple SD Gothic Neo', '맑은 고딕', sans-serif; background: #f9f9f9; color: #333; min-height: 100vh; }
+
+    /* ── 헤더 ── */
+    .header { background: white; padding: 12px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 100; }
+    .search-box { display: flex; align-items: center; background: #f2f2f2; border-radius: 20px; padding: 9px 14px; gap: 8px; }
+    .search-input { border: none; background: transparent; font-size: 15px; color: #333; width: 100%; outline: none; font-family: inherit; }
+    .search-input::placeholder { color: #aaa; }
+
+    /* ── 현재 위치 배너 ── */
+    .cur-banner { display: none; margin: 10px 16px 0; background: #eff6ff; border-radius: 12px; padding: 12px 16px; border: 1.5px solid #bfdbfe; }
+    .cur-banner.on { display: flex; align-items: center; gap: 10px; }
+    .cb-info { flex: 1; }
+    .cb-label { font-size: 11px; color: #3b82f6; font-weight: 700; margin-bottom: 2px; }
+    .cb-name  { font-size: 15px; font-weight: 700; color: #1e3a8a; }
+    .cb-floor { font-size: 12px; color: #60a5fa; }
+    .cb-btns  { display: flex; flex-direction: column; gap: 5px; }
+    .cb-nav-btn { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .cb-clear   { background: none; border: none; color: #93c5fd; font-size: 18px; cursor: pointer; padding: 2px; }
+
+    /* ── 메인 문구 ── */
+    .main-content { text-align: center; padding: 28px 20px 12px; }
+    .main-text { font-size: 20px; font-weight: 700; color: #222; margin-bottom: 5px; }
+    .sub-text  { font-size: 13px; color: #999; }
+
+    /* ── 현재 위치 설정 버튼 ── */
+    .set-loc-btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 16px 14px; background: white; border: 1.5px solid #2563eb; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 600; color: #2563eb; cursor: pointer; }
+    .set-loc-btn:active { background: #eff6ff; }
+
+    /* ── 장소 목록 ── */
+    .list-wrap { padding: 0 16px 120px; }
+    .list-label { font-size: 13px; color: #999; margin-bottom: 10px; padding-left: 2px; }
+    .place-card { background: white; border-radius: 12px; padding: 13px 16px; margin-bottom: 9px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); display: flex; align-items: center; gap: 14px; cursor: pointer; }
+    .place-card:active { background: #f0f7ff; }
+    .floor-badge { width: 42px; height: 42px; border-radius: 50%; background: #e8f0fe; color: #2563eb; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .place-info { flex: 1; }
+    .place-name { font-size: 15px; font-weight: 600; color: #222; margin-bottom: 3px; }
+    .place-desc { font-size: 13px; color: #999; }
+    .no-result  { text-align: center; padding: 40px 20px; color: #bbb; font-size: 15px; }
+
+    /* ── 공통 팝업 배경 ── */
+    .backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: flex-end; justify-content: center; }
+    .backdrop.open { display: flex; }
+
+    /* ── 장소 상세 팝업 ── */
+    .modal { background: white; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 22px 20px 36px; animation: slideUp .22s ease; }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle { width: 40px; height: 4px; background: #e0e0e0; border-radius: 2px; margin: 0 auto 18px; }
+    .modal-head   { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .modal-title  { font-size: 19px; font-weight: 700; color: #111; }
+    .modal-close  { width: 30px; height: 30px; border-radius: 50%; background: #f2f2f2; border: none; font-size: 15px; color: #666; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .modal-badge  { display: inline-block; background: #e8f0fe; color: #2563eb; font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 20px; margin-bottom: 16px; }
+    .modal-divider { height: 1px; background: #f0f0f0; margin: 14px 0; }
+    .mrow { display: flex; gap: 12px; margin-bottom: 12px; }
+    .mrow-icon { font-size: 15px; width: 22px; text-align: center; flex-shrink: 0; margin-top: 1px; }
+    .mrow-label { font-size: 12px; color: #aaa; margin-bottom: 2px; }
+    .mrow-value { font-size: 14px; color: #333; line-height: 1.5; }
+    .btn-primary { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 13px; border-radius: 10px; font-size: 15px; font-weight: 600; width: 100%; cursor: pointer; font-family: inherit; border: none; margin-top: 8px; background: #2563eb; color: white; }
+    .btn-secondary { background: #eff6ff; color: #2563eb; }
+    .btn-primary:active { background: #1d4ed8; }
+    .btn-secondary:active { background: #dbeafe; }
+
+    /* ── 단계별 현재 위치 선택 팝업 ── */
+    .loc-sheet { background: white; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 20px 20px 40px; animation: slideUp .22s ease; max-height: 80vh; overflow-y: auto; }
+    .ls-handle { width: 40px; height: 4px; background: #e0e0e0; border-radius: 2px; margin: 0 auto 16px; }
+    .ls-head   { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .ls-back   { width: 32px; height: 32px; border-radius: 8px; background: #f2f2f2; border: none; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .ls-title  { font-size: 16px; font-weight: 700; color: #111; flex: 1; }
+    .ls-close  { width: 32px; height: 32px; border-radius: 50%; background: #f2f2f2; border: none; font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    /* 단계 인디케이터 */
+    .ls-steps  { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; }
+    .ls-step   { flex: 1; height: 4px; border-radius: 2px; background: #e5e7eb; }
+    .ls-step.done   { background: #2563eb; }
+    .ls-step.active { background: #93c5fd; }
+    /* 선택지 버튼 그리드 */
+    .ls-grid   { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+    .ls-option { background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 14px 10px; text-align: center; cursor: pointer; font-size: 14px; font-weight: 500; color: #333; font-family: inherit; transition: all .12s; }
+    .ls-option:active { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
+    .ls-option.selected { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
+    .ls-option-sub { font-size: 11px; color: #999; margin-top: 3px; }
+    /* 선택 완료 확인 */
+    .ls-confirm-area { margin-top: 14px; }
+    .ls-selected-preview { background: #f0fdf4; border: 1.5px solid #6ee7b7; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; font-size: 14px; color: #065f46; display: flex; align-items: center; gap: 8px; }
+
+    /* ── 경로 안내 화면 ── */
+    .nav-screen { display: none; position: fixed; inset: 0; background: #f9f9f9; z-index: 300; overflow-y: auto; }
+    .nav-screen.open { display: block; }
+    .nav-header { background: white; padding: 14px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 12px; position: sticky; top: 0; }
+    .nav-back   { width: 36px; height: 36px; border-radius: 10px; background: #f2f2f2; border: none; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .nav-htitle { font-size: 16px; font-weight: 700; color: #111; flex: 1; }
+    .nav-body   { padding: 14px 16px 80px; }
+
+    /* 출발지/목적지 카드 */
+    .point-card { background: white; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .pc-label { font-size: 11px; font-weight: 700; margin-bottom: 5px; }
+    .pc-label.from { color: #3b82f6; }
+    .pc-label.to   { color: #10b981; }
+    .pc-name  { font-size: 17px; font-weight: 700; color: #111; margin-bottom: 2px; }
+    .pc-sub   { font-size: 13px; color: #999; }
+    .point-empty { background: white; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; border: 2px dashed #e5e7eb; cursor: pointer; text-align: center; }
+    .point-empty p { font-size: 15px; color: #aaa; padding: 6px 0; }
+
+    /* 층 이동 배지 */
+    .floor-badge-big { background: #fef9c3; border: 1.5px solid #fde047; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+    .fbb-icon { font-size: 22px; }
+    .fbb-text { font-size: 14px; color: #78350f; line-height: 1.5; }
+    .same-note { background: #ecfdf5; border-radius: 10px; padding: 12px 14px; border: 1.5px solid #6ee7b7; margin-bottom: 12px; font-size: 14px; color: #065f46; display: flex; align-items: center; gap: 8px; }
+
+    /* 경로 스텝 */
+    .steps-title { font-size: 13px; font-weight: 700; color: #666; margin-bottom: 10px; padding-left: 2px; }
+    .step-card  { display: flex; align-items: flex-start; gap: 12px; background: white; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .step-icon  { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .step-num   { font-size: 11px; color: #aaa; margin-bottom: 2px; }
+    .step-text  { font-size: 14px; color: #222; line-height: 1.55; font-weight: 500; }
+    .step-sub   { font-size: 12px; color: #999; margin-top: 2px; }
+
+    /* 목적지 검색 */
+    .dest-panel { display: none; position: fixed; inset: 0; background: #f9f9f9; z-index: 350; overflow-y: auto; }
+    .dest-panel.open { display: block; }
+    .dp-header  { background: white; padding: 12px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; position: sticky; top: 0; }
+    .dp-search  { flex: 1; display: flex; align-items: center; background: #f2f2f2; border-radius: 20px; padding: 9px 14px; gap: 8px; }
+    .dp-input   { border: none; background: transparent; font-size: 15px; color: #333; width: 100%; outline: none; font-family: inherit; }
+    .dp-cancel  { background: none; border: none; color: #2563eb; font-size: 14px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+    .dp-list    { padding: 10px 16px 60px; }
+  </style>
+</head>
+<body>
+
+<!-- ── 헤더: 검색창만 (QR 버튼 제거) ── -->
+<div class="header">
+  <div class="search-box">
+    <span style="font-size:16px;color:#888;flex-shrink:0">🔍</span>
+    <input class="search-input" type="text" placeholder="장소를 검색해보세요" oninput="onSearch(this.value)"/>
+  </div>
+</div>
+
+<!-- ── 현재 위치 배너 ── -->
+<div class="cur-banner" id="cur-banner">
+  <span style="font-size:20px;flex-shrink:0">📍</span>
+  <div class="cb-info">
+    <div class="cb-label">현재 위치</div>
+    <div class="cb-name"  id="cb-name">-</div>
+    <div class="cb-floor" id="cb-floor">-</div>
+  </div>
+  <div class="cb-btns">
+    <button class="cb-nav-btn" onclick="openNavScreen(null, currentLocation)">경로 찾기</button>
+    <button class="cb-clear" onclick="clearCurrent()">✕</button>
+  </div>
+</div>
+
+<!-- ── 메인 문구 ── -->
+<div class="main-content">
+  <p class="main-text">원하는 장소를 쉽게 찾아보세요</p>
+  <p class="sub-text">검색하거나 아래 목록에서 선택하세요</p>
+</div>
+
+<!-- ── 현재 위치 설정 버튼 ── -->
+<button class="set-loc-btn" onclick="openLocSheet()">
+  📍 현재 위치 설정하기
+</button>
+
+<!-- ── 장소 목록 ── -->
+<div class="list-wrap">
+  <p class="list-label" id="list-label">전체 장소</p>
+  <div id="place-list"></div>
+</div>
+
+<!-- ── 장소 상세 팝업 ── -->
+<div class="backdrop" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <span class="modal-title" id="modal-title"></span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <span class="modal-badge" id="modal-badge"></span>
+    <div class="modal-divider"></div>
+    <div id="modal-body"></div>
+    <div id="modal-btns" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<!-- ── 단계별 현재 위치 선택 팝업 ── -->
+<div class="backdrop" id="loc-bg" onclick="closeLocSheet(event)">
+  <div class="loc-sheet">
+    <div class="ls-handle"></div>
+    <div class="ls-head">
+      <button class="ls-back" id="ls-back-btn" onclick="locStepBack()" style="visibility:hidden">←</button>
+      <span class="ls-title" id="ls-title">몇 층에 계신가요?</span>
+      <button class="ls-close" onclick="closeLocSheet()">✕</button>
+    </div>
+    <!-- 단계 인디케이터 -->
+    <div class="ls-steps">
+      <div class="ls-step" id="lss-1"></div>
+      <div class="ls-step" id="lss-2"></div>
+      <div class="ls-step" id="lss-3"></div>
+    </div>
+    <div id="loc-content"></div>
+  </div>
+</div>
+
+<!-- ── 경로 안내 화면 ── -->
+<div class="nav-screen" id="nav-screen">
+  <div class="nav-header">
+    <button class="nav-back" onclick="closeNavScreen()">←</button>
+    <span class="nav-htitle">경로 안내</span>
+  </div>
+  <div class="nav-body" id="nav-body"></div>
+</div>
+
+<!-- ── 목적지 검색 패널 ── -->
+<div class="dest-panel" id="dest-panel">
+  <div class="dp-header">
+    <div class="dp-search">
+      <span style="font-size:15px;color:#888;flex-shrink:0">🔍</span>
+      <input class="dp-input" id="dp-input" type="text" placeholder="목적지 검색..." oninput="onDestSearch(this.value)"/>
+    </div>
+    <button class="dp-cancel" onclick="closeDestPanel()">취소</button>
+  </div>
+  <div class="dp-list" id="dp-list"></div>
+</div>
+
+<script>
+/* =====================================================
+   전체 장소 데이터
+   ===================================================== */
+const PLACES = [
+  /* ── 1층 ── */
+  { name:'교문',             floor:1, type:'출입구',   zone:'entrance',
+    details:{icon:'🚪', location:'교문 (건물 정면 입구)'} },
+  { name:'지킴이실',         floor:1, type:'행정',     zone:'entrance',
+    details:{icon:'👮', location:'교문 옆 (지킴이실)'} },
+  { name:'식당구역',         floor:1, type:'편의시설', zone:'dining',
+    details:{icon:'🍽️', location:'1층 식당구역'} },
+  { name:'매점',             floor:1, type:'편의시설', zone:'dining',
+    details:{icon:'🛒', location:'로비 옆 매점'} },
+  { name:'로비',             floor:1, type:'공용공간', zone:'lobby',
+    details:{icon:'🏛️', location:'1층 로비'} },
+  { name:'당직실',           floor:1, type:'행정',     zone:'lobby',
+    details:{icon:'🔑', location:'로비 옆 당직실'} },
+  { name:'조회대',           floor:1, type:'공용공간', zone:'lobby',
+    details:{icon:'📢', location:'로비 앞 조회대'} },
+  { name:'행정실',           floor:1, type:'행정',     zone:'admin',
+    details:{icon:'📋', location:'로비에서 왼쪽으로 유턴 후 행정실'} },
+  { name:'교장실',           floor:1, type:'행정',     zone:'admin',
+    details:{icon:'👔', location:'행정실 바로 옆 교장실'} },
+  { name:'문서고',           floor:1, type:'행정',     zone:'admin',
+    details:{icon:'🗂️', location:'교장실 옆 문서고'} },
+  { name:'인쇄실',           floor:1, type:'행정',     zone:'admin',
+    details:{icon:'🖨️', location:'교장실 옆 문서고'} },
+  { name:'보건실',           floor:1, type:'편의시설', zone:'admin',
+    details:{icon:'🩺', location:'복도 끝 보건실'} },
+  { name:'통합교육지원실 1', floor:1, type:'교실',     zone:'special',
+    details:{icon:'🏫', location:'1층 우측 복도'} },
+  { name:'통합교육지원실 2', floor:1, type:'교실',     zone:'special',
+    details:{icon:'🏫', location:'1층 우측 복도'} },
+  { name:'통합교육지원실 3', floor:1, type:'교실',     zone:'special',
+    details:{icon:'🏫', location:'1층 우측 복도'} },
+  { name:'통합교육지원실 4', floor:1, type:'교실',     zone:'special',
+    details:{icon:'🏫', location:'1층 우측 복도'} },
+  { name:'특수교육교무실',   floor:1, type:'행정',     zone:'special',
+    details:{icon:'📌', location:'1층 우측'} },
+  { name:'생활교육실',       floor:1, type:'교실',     zone:'special',
+    details:{icon:'📖', location:'1층 우측'} },
+  { name:'직업교육실',       floor:1, type:'교실',     zone:'special',
+    details:{icon:'🔧', location:'1층 우측'} },
+  { name:'시청각실',         floor:1, type:'강의실',   zone:'special',
+    details:{icon:'📽️', location:'1층 우측'} },
+  { name:'방송실',           floor:1, type:'특별실',   zone:'lobby',
+    details:{icon:'📻', location:'교장실 옆 문서고'} },
+  { name:'휴게실',           floor:1, type:'편의시설', zone:'lobby',
+    details:{icon:'☕', location:'교장실 옆 문서고'} },
+  /* 1층 복도·계단 위치 */
+  { name:'1층 로비 앞 복도', floor:1, type:'복도',       zone:'lobby',
+    details:{icon:'🚶', location:'로비와 당직실 사이 복도'} },
+  { name:'1층 계단 (매점 옆)', floor:1, type:'계단',     zone:'stair',
+    details:{icon:'🪜', location:'매점 바로 옆 계단'} },
+  { name:'1층 EV (매점 앞)', floor:1, type:'엘리베이터', zone:'stair',
+    details:{icon:'🛗', location:'매점 앞 엘리베이터'} },
+
+  /* ── 2층 ── */
+  { name:'1-1반', floor:2, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 복도 끝 1-1반'    } },
+  { name:'1-2반', floor:2, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 1-1반 옆 1-2반'   } },
+  { name:'1-3반', floor:2, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 1-2반 옆 1-3반'   } },
+  { name:'1-4반', floor:2, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 바로 1-4반'        } },
+  { name:'1학년실',        floor:2, type:'행정',       zone:'left_class',
+    details:{icon:'📋', location:'EV쪽 계단에서 오른쪽, 1-4반 바로 옆 1학년실'  } },
+  { name:'1-5반',          floor:2, type:'1학년 교실', zone:'right_study',
+    details:{icon:'🏫', location:'EV쪽 계단에서 왼쪽, 진로진학상담실 맞은편 1-5반'} },
+  { name:'홈베이스',       floor:2, type:'공용공간',   zone:'center',
+    details:{icon:'🏠', location:'EV쪽 계단에서 직진, 홈베이스'} },
+  { name:'본교무실',       floor:2, type:'행정',       zone:'center',
+    details:{icon:'👩‍🏫', location:'EV쪽 계단에서 직진, 홈베이스'} },
+  { name:'진로진학상담실', floor:2, type:'상담실',     zone:'right_study',
+    details:{icon:'🎓', location:'EV쪽 계단에서 왼쪽, 진로진학상담실'      } },
+  { name:'종합학습실 1',   floor:2, type:'학습공간',   zone:'right_study',
+    details:{icon:'📚', location:'EV쪽 계단에서 왼쪽, 1-5반 옆 종합학습실1'} },
+  { name:'서버실',         floor:2, type:'기타',       zone:'right_study',
+    details:{icon:'🖥️', location:'EV쪽 계단에서 왼쪽, 종합학습실1 옆 서버실'} },
+  { name:'진로활동실',     floor:2, type:'특별실',     zone:'right_study',
+    details:{icon:'🔭', location:'EV쪽 계단에서 왼쪽으로 꺾어 직진 → 1-5반·종합학습실1·서버실 순서로 지나 → 복도 끝 진로활동실'} },
+  { name:'도서관',         floor:2, type:'학습공간',   zone:'right_study',
+    details:{icon:'📖', location:'EV쪽 계단에서 왼쪽으로 꺾어 직진 → 1-5반·종합학습실1·서버실·진로활동실 순서로 지나 → 진로활동실에서 오른쪽으로 꺾으면 도서관'} },
+  { name:'평가실',         floor:2, type:'특별실',     zone:'lower_right',
+    details:{icon:'📝', location:'홈베이스 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진 → 첫 번째 방 평가실'  } },
+  { name:'협의실',         floor:2, type:'특별실',     zone:'lower_right',
+    details:{icon:'🤝', location:'홈베이스 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진 → 평가실 다음 협의실'  } },
+  { name:'컴퓨터실습실',   floor:2, type:'특별실',     zone:'lower_right',
+    details:{icon:'💻', location:'홈베이스 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진 → 평가실·협의실 지나 컴퓨터실습실'} },
+  { name:'정보과연구실',   floor:2, type:'연구실',     zone:'lower_right',
+    details:{icon:'🔬', location:'홈베이스 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진 → 복도 끝 정보과연구실'} },
+  { name:'강당',           floor:2, type:'공용공간',   zone:'hall',
+    details:{icon:'🎭', location:'홈베이스 옆 계단에서 직진 후 본교무실 왼쪽 강당연결통로를 따라 이동 → 강당'} },
+  { name:'체육과연구실',   floor:2, type:'연구실',     zone:'hall',
+    details:{icon:'⚽', location:'강당연결통로 → 강당 내부, 체육과연구실'                   } },
+  { name:'샤워실',         floor:2, type:'편의시설',   zone:'hall',
+    details:{icon:'🚿', location:'강당연결통로 → 강당 내부, 샤워실'                         } },
+  /* 2층 복도·계단 */
+  { name:'2층 교실 앞 복도',  floor:2, type:'복도',       zone:'left_class',
+    details:{icon:'🚶', location:'1-1~1-4반 앞 복도'} },
+  { name:'2층 홈베이스 앞',   floor:2, type:'복도',       zone:'center',
+    details:{icon:'🚶', location:'홈베이스 바로 앞'} },
+  { name:'2층 계단 (1-4반 옆)', floor:2, type:'계단',     zone:'stair',
+    details:{icon:'🪜', location:'1-4반 옆 계단 (복도 끝)'} },
+  { name:'2층 계단 (EV 옆)',  floor:2, type:'계단',       zone:'stair',
+    details:{icon:'🪜', location:'EV 바로 옆 계단'} },
+  { name:'2층 EV',            floor:2, type:'엘리베이터', zone:'stair',
+    details:{icon:'🛗', location:'2층 엘리베이터 (1-4반·1학년실 사이)'} },
+
+  /* ── 3층 ── */
+  { name:'1-6반', floor:3, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 수석교사실 지나 1-6반'  } },
+  { name:'1-7반', floor:3, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 1-6반 옆 1-7반'         } },
+  { name:'1-8반', floor:3, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 1-7반 옆 1-8반'         } },
+  { name:'1-9반', floor:3, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 1-8반 옆 1-9반'         } },
+  { name:'1-10반',         floor:3, type:'1학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 복도 끝 1-10반'} },
+  { name:'수석교사실',     floor:3, type:'행정',       zone:'center',
+    details:{icon:'👩‍🏫', location:'EV쪽 계단에서 나오면 앞 살짝 오른쪽, 수석교사실'} },
+  { name:'소형홈베이스',   floor:3, type:'공용공간',   zone:'center',
+    details:{icon:'🏠', location:'EV쪽 계단에서 직진, 소형홈베이스'} },
+  { name:'온라인수업제작실', floor:3, type:'특별실',   zone:'center',
+    details:{icon:'🎬', location:'EV쪽 계단에서 직진, 소형홈베이스'} },
+  { name:'수업카페',       floor:3, type:'편의시설',   zone:'center',
+    details:{icon:'☕', location:'EV쪽 계단에서 직진, 소형홈베이스'} },
+  { name:'미술실',         floor:3, type:'특별실',     zone:'art_science',
+    details:{icon:'🎨', location:'과학실 옆 계단에서 직진, 미술실'} },
+  { name:'기술준비실',     floor:3, type:'특별실',     zone:'right_special',
+    details:{icon:'🔩', location:'EV쪽 계단에서 왼쪽, 기술준비실'} },
+  { name:'기술실상상제작소', floor:3, type:'특별실',   zone:'right_special',
+    details:{icon:'🛠️', location:'EV쪽 계단에서 왼쪽, 기술준비실'} },
+  { name:'가정실',         floor:3, type:'특별실',     zone:'right_special',
+    details:{icon:'🍳', location:'EV쪽 계단에서 왼쪽, 기술준비실'} },
+  { name:'가정준비실',     floor:3, type:'특별실',     zone:'right_special',
+    details:{icon:'🧺', location:'EV쪽 계단에서 왼쪽, 기술준비실'} },
+  { name:'과학실 1',       floor:3, type:'특별실',     zone:'art_science',
+    details:{icon:'🔬', location:'3층 하단 복도'} },
+  { name:'과학실 2',       floor:3, type:'특별실',     zone:'art_science',
+    details:{icon:'🔬', location:'3층 하단 복도'} },
+  { name:'과학실 3',       floor:3, type:'특별실',     zone:'art_science',
+    details:{icon:'🔬', location:'3층 하단 복도'} },
+  { name:'과학교과연구실', floor:3, type:'연구실',     zone:'art_science',
+    details:{icon:'⚗️', location:'과학실 옆 계단에서 나와 왼쪽으로 꺾어 직진 → 과학실1 지나 한 번 더 꺾으면 과학교과연구실'} },
+  { name:'과학준비실 1',   floor:3, type:'특별실',     zone:'art_science',
+    details:{icon:'🧪', location:'3층 하단 복도'} },
+  { name:'과학준비실 2',   floor:3, type:'특별실',     zone:'art_science',
+    details:{icon:'📊', location:'과학실 옆 계단에서 나와 왼쪽으로 꺾어 직진 → 과학실1·과학교과연구실·과학실2·과학준비실1·과학실3 지나 과학준비실2'} },
+  { name:'남자휴게실',     floor:3, type:'편의시설',   zone:'right_special',
+    details:{icon:'🚹', location:'EV쪽 계단에서 왼쪽, 복도 맞은편 남자휴게실'      } },
+  { name:'여자휴게실',     floor:3, type:'편의시설',   zone:'right_special',
+    details:{icon:'🚺', location:'EV쪽 계단에서 왼쪽, 복도 맞은편 여자휴게실'      } },
+  /* 3층 복도·계단 */
+  { name:'3층 교실 앞 복도',  floor:3, type:'복도',       zone:'left_class',
+    details:{icon:'🚶', location:'1-6~1-10반 앞 복도'} },
+  { name:'3층 소형홈베이스 앞', floor:3, type:'복도',     zone:'center',
+    details:{icon:'🚶', location:'소형홈베이스 바로 앞'} },
+  { name:'3층 과학실 앞 복도', floor:3, type:'복도',      zone:'art_science',
+    details:{icon:'🚶', location:'과학실 1·2·3 앞 복도'} },
+  { name:'3층 계단 (1-10반 옆)', floor:3, type:'계단',    zone:'stair',
+    details:{icon:'🪜', location:'1-10반 옆 계단 (복도 끝)'} },
+  { name:'3층 계단 (EV 옆)',   floor:3, type:'계단',      zone:'stair',
+    details:{icon:'🪜', location:'EV 바로 옆 계단'} },
+  { name:'3층 EV',             floor:3, type:'엘리베이터', zone:'stair',
+    details:{icon:'🛗', location:'3층 엘리베이터 (수석교사실·계단 사이)'} },
+
+  /* ── 4층 ── */
+  { name:'2-1반', floor:4, type:'2학년 교실', zone:'lower_class',
+    details:{icon:'🏫', location:'홈베이스 쪽 계단에서 왼쪽, 2-1반'               } },
+  { name:'2-2반', floor:4, type:'2학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 복도 끝 2-2반'            } },
+  { name:'2-3반', floor:4, type:'2학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 2-2반 옆 2-3반'           } },
+  { name:'2-4반', floor:4, type:'2학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 2-3반 옆 2-4반'           } },
+  { name:'2-5반', floor:4, type:'2학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 바로 2-5반'               } },
+  { name:'2-6반', floor:4, type:'2학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 왼쪽, 바로 2-6반'                 } },
+  { name:'2-7반', floor:4, type:'2학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 왼쪽, 2-6반 옆 2-7반'             } },
+  { name:'2-8반', floor:4, type:'2학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 왼쪽, 2-7반 옆 2-8반'             } },
+  { name:'2-9반', floor:4, type:'2학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 왼쪽, 2-8반 옆 2-9반'             } },
+  { name:'2학년실',        floor:4, type:'행정',       zone:'left_class',
+    details:{icon:'📋', location:'EV쪽 계단에서 오른쪽, 2-5반 옆 2학년실'} },
+  { name:'홈베이스',       floor:4, type:'공용공간',   zone:'center',
+    details:{icon:'🏠', location:'EV쪽 계단에서 직진, 홈베이스'} },
+  { name:'음악실',         floor:4, type:'특별실',     zone:'lower_class',
+    details:{icon:'🎵', location:'홈베이스 쪽 계단에서 직진, 음악실'} },
+  { name:'그룹학습실',     floor:4, type:'학습공간',   zone:'right_class',
+    details:{icon:'👥', location:'EV쪽 계단에서 왼쪽, 복도 맞은편 그룹학습실'} },
+  { name:'다목적수업교실', floor:4, type:'강의실',     zone:'lower_class',
+    details:{icon:'🏫', location:'홈베이스 쪽 계단에서 왼쪽으로 꺾으면 복도 맞은편에 생활안전교육부'} },
+  { name:'중형강의실',     floor:4, type:'강의실',     zone:'lower_class',
+    details:{icon:'🎤', location:'홈베이스 쪽 계단에서 왼쪽으로 꺾으면 복도 맞은편에 생활안전교육부'} },
+  { name:'위클래스상담실', floor:4, type:'상담실',     zone:'lower_class',
+    details:{icon:'💙', location:'홈베이스 쪽 계단에서 왼쪽으로 꺾어 직진 → 다목적수업교실·2-1반·중형강의실 지나 복도 끝 위클래스상담실'} },
+  { name:'생활안전교육부', floor:4, type:'행정',       zone:'lower_class',
+    details:{icon:'🛡️', location:'홈베이스 쪽 계단에서 왼쪽으로 꺾으면 복도 맞은편에 생활안전교육부'} },
+  /* 4층 복도·계단 */
+  { name:'4층 교실 앞 복도',  floor:4, type:'복도',       zone:'left_class',
+    details:{icon:'🚶', location:'2-2~2-5반 앞 복도'} },
+  { name:'4층 홈베이스 앞',   floor:4, type:'복도',       zone:'center',
+    details:{icon:'🚶', location:'홈베이스 바로 앞'} },
+  { name:'4층 강의실 앞 복도', floor:4, type:'복도',      zone:'lower_class',
+    details:{icon:'🚶', location:'음악실·다목적수업교실 앞 복도'} },
+  { name:'4층 계단 (2-5반 옆)', floor:4, type:'계단',     zone:'stair',
+    details:{icon:'🪜', location:'2-5반 옆 계단 (복도 끝)'} },
+  { name:'4층 계단 (EV 옆)',   floor:4, type:'계단',      zone:'stair',
+    details:{icon:'🪜', location:'EV 바로 옆 계단'} },
+  { name:'4층 EV',             floor:4, type:'엘리베이터', zone:'stair',
+    details:{icon:'🛗', location:'4층 엘리베이터 (2학년실·계단 사이)'} },
+
+  /* ── 5층 ── */
+  { name:'3-1반', floor:5, type:'3학년 교실', zone:'lower_class',
+    details:{icon:'🏫', location:'홈베이스 쪽 계단에서 왼쪽, 3-1반'               } },
+  { name:'3-2반', floor:5, type:'3학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 복도 끝 3-2반'            } },
+  { name:'3-3반', floor:5, type:'3학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 3-2반 옆 3-3반'           } },
+  { name:'3-4반', floor:5, type:'3학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 3-3반 옆 3-4반'           } },
+  { name:'3-5반', floor:5, type:'3학년 교실', zone:'left_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 오른쪽, 바로 3-5반'               } },
+  { name:'3-6반', floor:5, type:'3학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 왼쪽, 바로 3-6반'                 } },
+  { name:'3-7반', floor:5, type:'3학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 왼쪽, 3-6반 옆 3-7반'             } },
+  { name:'3-8반', floor:5, type:'3학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 왼쪽, 3-7반 옆 3-8반'             } },
+  { name:'3-9반', floor:5, type:'3학년 교실', zone:'right_class',
+    details:{icon:'🏫', location:'EV쪽 계단에서 왼쪽, 3-8반 옆 3-9반'             } },
+  { name:'3학년실',        floor:5, type:'행정',       zone:'left_class',
+    details:{icon:'📋', location:'EV쪽 계단에서 오른쪽, 3-5반 옆 3학년실'} },
+  { name:'홈베이스',       floor:5, type:'공용공간',   zone:'center',
+    details:{icon:'🏠', location:'EV쪽 계단에서 직진, 홈베이스'} },
+  { name:'다목적실',       floor:5, type:'강의실',     zone:'lower_class',
+    details:{icon:'🏫', location:'홈베이스 쪽 계단에서 직진, 다목적실'} },
+  { name:'자습실',         floor:5, type:'학습공간',   zone:'lower_class',
+    details:{icon:'✏️', location:'홈베이스 쪽 계단에서 왼쪽, 자습실'} },
+  { name:'대형강의실',     floor:5, type:'강의실',     zone:'lower_class',
+    details:{icon:'🎤', location:'홈베이스 쪽 계단에서 왼쪽, 3-1반 옆 대형강의실' } },
+  { name:'IT·토론학습실',  floor:5, type:'학습공간',   zone:'lower_class',
+    details:{icon:'💻', location:'홈베이스 쪽 계단에서 왼쪽, 복도 맞은편 IT·토론학습실'} },
+  { name:'진학상담실',     floor:5, type:'상담실',     zone:'right_class',
+    details:{icon:'🎓', location:'EV쪽 계단에서 왼쪽, 복도 맞은편 진학상담실'} },
+  /* 5층 복도·계단 */
+  { name:'5층 교실 앞 복도',  floor:5, type:'복도',       zone:'left_class',
+    details:{icon:'🚶', location:'3-2~3-5반 앞 복도'} },
+  { name:'5층 홈베이스 앞',   floor:5, type:'복도',       zone:'center',
+    details:{icon:'🚶', location:'홈베이스 바로 앞'} },
+  { name:'5층 강의실 앞 복도', floor:5, type:'복도',      zone:'lower_class',
+    details:{icon:'🚶', location:'다목적실·자습실 앞 복도'} },
+  { name:'5층 계단 (3-5반 옆)', floor:5, type:'계단',     zone:'stair',
+    details:{icon:'🪜', location:'3-5반 옆 계단 (복도 끝)'} },
+  { name:'5층 계단 (EV 옆)',   floor:5, type:'계단',      zone:'stair',
+    details:{icon:'🪜', location:'EV 바로 옆 계단 (옥상 연결)'} },
+  { name:'5층 EV',             floor:5, type:'엘리베이터', zone:'stair',
+    details:{icon:'🛗', location:'5층 엘리베이터 (3학년실·계단 사이)'} },
+];
+
+/* =====================================================
+   층별 구역(zone) 정의
+   각 층마다 선택 가능한 구역 목록
+   ===================================================== */
+const ZONES = {
+  1: [
+    { id:'entrance',  label:'교문·지킴이실',      sub:'정문 입구 쪽' },
+    { id:'dining',    label:'식당·매점',          sub:'1층 좌측' },
+    { id:'lobby',     label:'로비·당직실 복도',   sub:'1층 중앙' },
+    { id:'admin',     label:'행정실·교장실·보건실', sub:'1층 안쪽 복도' },
+    { id:'special',   label:'통합교육지원실',      sub:'1층 안쪽 우측' },
+    { id:'stair',     label:'계단·EV (매점 옆)',   sub:'이동 공간' },
+  ],
+  2: [
+    { id:'left_class',  label:'1-1~1-4반 교실',    sub:'교실 복도 (계단 방향)' },
+    { id:'right_study', label:'도서관·상담실',      sub:'EV 건너 오른쪽' },
+    { id:'center',      label:'홈베이스·교무실',    sub:'2층 중앙' },
+    { id:'lower_right', label:'컴퓨터실·평가실',    sub:'아래쪽 복도' },
+    { id:'hall',        label:'강당',              sub:'강당연결통로 이용' },
+    { id:'stair',       label:'계단·EV',            sub:'1-4반 옆 / EV 옆' },
+  ],
+  3: [
+    { id:'left_class',    label:'1-6~1-10반 교실', sub:'교실 복도' },
+    { id:'center',        label:'소형홈베이스·수업카페', sub:'3층 중앙' },
+    { id:'right_special', label:'기술실·가정실',   sub:'EV 건너 오른쪽' },
+    { id:'art_science',   label:'미술실·과학실',   sub:'아래쪽 복도' },
+    { id:'stair',         label:'계단·EV',         sub:'1-10반 옆 / EV 옆' },
+  ],
+  4: [
+    { id:'left_class',  label:'2-2~2-5반 교실',   sub:'교실 복도 (계단 방향)' },
+    { id:'right_class', label:'2-6~2-9반 교실',   sub:'EV 건너 오른쪽' },
+    { id:'center',      label:'홈베이스',          sub:'4층 중앙' },
+    { id:'lower_class', label:'음악실·강의실',     sub:'아래쪽 복도' },
+    { id:'stair',       label:'계단·EV',           sub:'2-5반 옆 / EV 옆' },
+  ],
+  5: [
+    { id:'left_class',  label:'3-2~3-5반 교실',   sub:'교실 복도 (계단 방향)' },
+    { id:'right_class', label:'3-6~3-9반·진학상담실', sub:'EV 건너 오른쪽' },
+    { id:'center',      label:'홈베이스',          sub:'5층 중앙' },
+    { id:'lower_class', label:'강의실·자습실',     sub:'아래쪽 복도' },
+    { id:'stair',       label:'계단·EV',           sub:'3-5반 옆 / EV 옆' },
+  ],
+};
+
+/* =====================================================
+   단계별 현재 위치 선택 로직
+   ===================================================== */
+let locStep  = 1;   // 현재 단계 (1:층, 2:구역, 3:세부위치)
+let locFloor = null;
+let locZone  = null;
+let locName  = null;
+
+function openLocSheet() {
+  locStep = 1; locFloor = null; locZone = null; locName = null;
+  updateLocSheet();
+  document.getElementById('loc-bg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLocSheet(e) {
+  if (e && e.target !== document.getElementById('loc-bg')) return;
+  document.getElementById('loc-bg').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function locStepBack() {
+  if (locStep > 1) { locStep--; updateLocSheet(); }
+}
+
+function updateLocSheet() {
+  /* 뒤로가기 버튼 */
+  document.getElementById('ls-back-btn').style.visibility = locStep > 1 ? 'visible' : 'hidden';
+
+  /* 단계 인디케이터 */
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById(`lss-${i}`);
+    el.className = 'ls-step' + (i < locStep ? ' done' : i === locStep ? ' active' : '');
+  }
+
+  /* 제목 */
+  const titles = ['', '몇 층에 계신가요?', '어느 구역인가요?', '세부 위치를 선택해주세요'];
+  document.getElementById('ls-title').textContent = titles[locStep];
+
+  /* 내용 */
+  const content = document.getElementById('loc-content');
+
+  if (locStep === 1) {
+    /* ── 1단계: 층 선택 ── */
+    content.innerHTML = `<div class="ls-grid">
+      ${[1,2,3,4,5].map(f => `
+        <button class="ls-option ${locFloor===f?'selected':''}" onclick="selectFloor(${f})">
+          <div>${f}층</div>
+          <div class="ls-option-sub">${f===1?'행정·식당':f===2?'1학년(1-4반)':f===3?'1학년(5-10반)':f===4?'2학년':f===5?'3학년':''}</div>
+        </button>`).join('')}
+    </div>`;
+
+  } else if (locStep === 2) {
+    /* ── 2단계: 구역 선택 ── */
+    const zones = ZONES[locFloor] || [];
+    content.innerHTML = `<div class="ls-grid">
+      ${zones.map(z => `
+        <button class="ls-option ${locZone===z.id?'selected':''}" onclick="selectZone('${z.id}')">
+          <div>${z.label}</div>
+          <div class="ls-option-sub">${z.sub}</div>
+        </button>`).join('')}
+    </div>`;
+
+  } else if (locStep === 3) {
+    /* ── 3단계: 세부 위치 선택 ── */
+    const places = PLACES.filter(p => p.floor === locFloor && p.zone === locZone);
+    content.innerHTML = `
+      <div class="ls-grid">
+        ${places.map(p => `
+          <button class="ls-option ${locName===p.name?'selected':''}" onclick="selectLocPlace('${p.name.replace(/'/g,"\\'")}')">
+            <div>${p.details.icon} ${p.name}</div>
+            <div class="ls-option-sub">${p.type}</div>
+          </button>`).join('')}
+      </div>
+      ${locName ? `
+        <div class="ls-confirm-area">
+          <div class="ls-selected-preview">✅ <strong>${locName}</strong> 선택됨</div>
+          <button class="btn-primary" onclick="confirmLocSelection()">이 위치로 설정하기</button>
+        </div>` : ''}
+    `;
+  }
+}
+
+function selectFloor(f) {
+  locFloor = f; locStep = 2; updateLocSheet();
+}
+function selectZone(z) {
+  locZone = z; locStep = 3; updateLocSheet();
+}
+function selectLocPlace(name) {
+  locName = name; updateLocSheet();
+}
+function confirmLocSelection() {
+  if (!locName) return;
+  setCurrentLocation(locName);
+  document.getElementById('loc-bg').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* =====================================================
+   현재 위치 관리
+   ===================================================== */
+let currentLocation = null;
+let navDest = null;
+
+function setCurrentLocation(name) {
+  const p = PLACES.find(x => x.name === name);
+  if (!p) return;
+  currentLocation = name;
+  document.getElementById('cb-name').textContent  = p.name;
+  document.getElementById('cb-floor').textContent = `${p.floor}층 · ${p.type}`;
+  document.getElementById('cur-banner').classList.add('on');
+}
+function clearCurrent() {
+  currentLocation = null;
+  document.getElementById('cur-banner').classList.remove('on');
+}
+
+/* =====================================================
+   경로 계산
+   ===================================================== */
+/* =====================================================
+   장소별 → 계단 이동 안내
+   (출발 장소 기준으로 어느 계단으로 가야 하는지)
+   ===================================================== */
+const TO_STAIR = {
+  /* ── 1층 ── */
+  '교문':             '교문에서 들어와 안쪽으로 직진하면 로비와 로비 옆 계단이 있습니다',
+  '지킴이실':         '지킴이실에서 안쪽으로 직진하면 로비와 로비 옆 계단이 있습니다',
+  '식당구역':         '식당에서 나와 오른쪽으로 꺾으면 매점과 매점 옆 계단·EV가 있습니다',
+  '매점':             '매점 바로 옆에 계단과 EV가 있습니다',
+  '로비':             '로비 바로 옆 계단을 이용하세요',
+  '당직실':           '당직실에서 나와 왼쪽으로 꺾으면 로비 옆 계단이 있습니다',
+  '조회대':           '조회대에서 안쪽으로 들어가면 로비 옆 계단이 있습니다',
+  '행정실':           '행정실에서 나와 오른쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+  '교장실':           '교장실에서 나와 오른쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+  '문서고':           '문서고에서 나와 오른쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+  '인쇄실':           '인쇄실에서 나와 오른쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+  '보건실':           '보건실에서 나와 왼쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+  '통합교육지원실 1': '복도를 따라 왼쪽(매점 옆 계단)으로 가거나, 오른쪽(직업교육실 옆 계단)으로 이동하세요',
+  '통합교육지원실 2': '복도를 따라 왼쪽(매점 옆 계단)으로 가거나, 오른쪽(직업교육실 옆 계단)으로 이동하세요',
+  '통합교육지원실 3': '복도를 따라 왼쪽(매점 옆 계단)으로 가거나, 오른쪽(직업교육실 옆 계단)으로 이동하세요',
+  '통합교육지원실 4': '바로 옆 매점 쪽 계단·EV를 이용하세요',
+  '특수교육교무실':   '복도를 따라 오른쪽(직업교육실 방향)으로 이동하세요',
+  '생활교육실':       '복도를 따라 오른쪽(직업교육실 방향)으로 이동하세요',
+  '직업교육실':       '직업교육실 바로 옆 계단을 이용하세요 (2층 도서관 방향으로 연결)',
+  '시청각실':         '시청각실에서 나와 오른쪽 직업교육실 옆 계단을 이용하세요',
+  '방송실':           '방송실에서 나와 오른쪽으로 꺾어 로비 옆 계단을 이용하세요',
+  '휴게실':           '휴게실에서 나와 오른쪽으로 꺾어 로비 옆 계단을 이용하세요',
+
+  /* ── 2층 ── */
+  '1-1반':          '복도 끝(1-1반 옆) 계단을 이용하세요',
+  '1-2반':          '복도를 따라 왼쪽으로 직진하면 복도 끝 계단, 오른쪽으로 직진하면 EV 옆 계단이 있습니다',
+  '1-3반':          '복도를 따라 왼쪽으로 직진하면 복도 끝 계단, 오른쪽으로 직진하면 EV 옆 계단이 있습니다',
+  '1-4반':          '바로 옆 EV 옆 계단을 이용하세요',
+  '1학년실':        '바로 옆 EV 옆 계단을 이용하세요',
+  '홈베이스':       '홈베이스에서 본교무실 방향으로 이동하면 홈베이스 옆 계단이 있습니다',
+  '본교무실':       '본교무실 바로 옆 홈베이스 옆 계단을 이용하세요',
+  '교무실':         '본교무실 바로 옆 홈베이스 옆 계단을 이용하세요',
+  '진로진학상담실': 'EV 옆 계단 방향으로 이동하세요 (복도를 따라 교실 쪽으로)',
+  '1-5반':          'EV 옆 계단 방향으로 이동하세요 (복도를 따라 교실 쪽으로)',
+  '종합학습실 1':   'EV 옆 계단 방향으로 이동하세요',
+  '서버실':         'EV 옆 계단 방향으로 이동하세요',
+  '진로활동실':     '왔던 방향으로 되돌아가 EV 옆 계단을 이용하거나, 도서관을 지나 홈베이스 옆 계단을 이용하세요',
+  '도서관':         '도서관에서 나와 왼쪽으로 꺾으면 홈베이스 옆 계단이 있습니다',
+  '평가실':         '홈베이스 옆 계단 방향으로 이동하세요 (복도를 따라 위쪽으로)',
+  '협의실':         '과학실 옆 계단 방향으로 이동하세요',
+  '컴퓨터실습실':   '과학실 옆 계단 방향으로 이동하세요',
+  '정보과연구실':   '과학실 옆 계단 방향으로 이동하세요',
+  '강당':           '강당연결통로를 통해 본관으로 이동한 후 홈베이스 옆 계단을 이용하세요',
+  '체육과연구실':   '강당연결통로를 통해 본관으로 이동한 후 홈베이스 옆 계단을 이용하세요',
+  '샤워실':         '강당연결통로를 통해 본관으로 이동한 후 홈베이스 옆 계단을 이용하세요',
+
+  /* ── 3층 ── */
+  '1-10반':         '복도 끝 계단을 이용하세요 (바로 옆)',
+  '1-9반':          '복도를 따라 왼쪽으로 가면 복도 끝 계단, 오른쪽으로 가면 EV 옆 계단이 있습니다',
+  '1-8반':          '복도를 따라 왼쪽으로 가면 복도 끝 계단, 오른쪽으로 가면 EV 옆 계단이 있습니다',
+  '1-7반':          '복도를 따라 왼쪽으로 가면 복도 끝 계단, 오른쪽으로 가면 EV 옆 계단이 있습니다',
+  '1-6반':          '복도를 따라 오른쪽으로 가면 EV 옆 계단이 있습니다',
+  '수석교사실':     '바로 옆 EV 옆 계단을 이용하세요',
+  '소형홈베이스':   'EV 방향(교실 복도 쪽)으로 이동하면 계단이 있습니다',
+  '온라인수업제작실':'EV 방향으로 이동하면 계단이 있습니다',
+  '수업카페':       '수업카페에서 나와 과학실 쪽 계단을 이용하거나, 반대쪽 EV 옆 계단을 이용하세요',
+  '미술실':         '미술실에서 나와 오른쪽 과학실 옆 계단을 이용하세요',
+  '기술준비실':     'EV 옆 계단이 바로 근처에 있습니다',
+  '기술실상상제작소':'EV 옆 계단 방향으로 이동하세요',
+  '가정실':         'EV 옆 계단 방향으로 이동하세요',
+  '가정준비실':     'EV 옆 계단 방향으로 이동하세요',
+  '과학실 1':       '과학실1 바로 옆 계단을 이용하세요',
+  '과학교과연구실': '과학실 옆 계단 방향으로 이동하세요',
+  '과학실 2':       '과학실 옆 계단 방향으로 이동하세요',
+  '과학준비실 1':   '과학실 옆 계단 방향으로 이동하세요',
+  '과학실 3':       '과학실 옆 계단 방향으로 이동하세요',
+  '과학준비실 2':   '과학실 옆 계단 방향으로 이동하세요',
+  '남자휴게실':     'EV 옆 계단이 근처에 있습니다',
+  '여자휴게실':     'EV 옆 계단이 근처에 있습니다',
+
+  /* ── 4층 ── */
+  '2-2반':          '복도 끝 계단을 이용하세요 (바로 옆)',
+  '2-3반':          '복도를 따라 왼쪽으로 가면 복도 끝 계단, 오른쪽으로 가면 EV 옆 계단이 있습니다',
+  '2-4반':          '복도를 따라 왼쪽으로 가면 복도 끝 계단, 오른쪽으로 가면 EV 옆 계단이 있습니다',
+  '2-5반':          '바로 옆 EV 옆 계단이 있습니다',
+  '2학년실':        '바로 옆 EV 옆 계단이 있습니다',
+  '2-6반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV 옆 계단이 있습니다',
+  '2-7반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV 옆 계단이 있습니다',
+  '2-8반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV 옆 계단이 있습니다',
+  '2-9반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV 옆 계단이 있습니다',
+  '그룹학습실':     '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV 옆 계단이 있습니다',
+  '음악실':         '음악실에서 나와 오른쪽 음악실 옆 계단을 이용하세요',
+  '다목적수업교실': '과학실 옆 계단 방향으로 이동하세요',
+  '2-1반':          '과학실 옆 계단 방향으로 이동하세요',
+  '중형강의실':     '과학실 옆 계단 방향으로 이동하세요',
+  '위클래스상담실': '과학실 옆 계단 방향으로 이동하세요',
+  '생활안전교육부': '과학실 옆 계단 방향으로 이동하세요',
+
+  /* ── 5층 ── */
+  '3-2반':          '복도 끝 계단을 이용하세요 (바로 옆)',
+  '3-3반':          '복도를 따라 왼쪽으로 가면 복도 끝 계단, 오른쪽으로 가면 EV 옆 계단이 있습니다',
+  '3-4반':          '복도를 따라 왼쪽으로 가면 복도 끝 계단, 오른쪽으로 가면 EV 옆 계단이 있습니다',
+  '3-5반':          '바로 옆 EV 옆 계단이 있습니다',
+  '3학년실':        '바로 옆 EV 옆 계단이 있습니다',
+  '3-6반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV 옆 계단이 있습니다',
+  '3-7반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV 옆 계단이 있습니다',
+  '3-8반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV 옆 계단이 있습니다',
+  '3-9반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV 옆 계단이 있습니다',
+  '진학상담실':     '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV 옆 계단이 있습니다',
+  '다목적실':       '다목적실에서 나와 오른쪽 다목적실 옆 계단을 이용하세요',
+  '자습실':         '과학실 옆 계단 방향으로 이동하세요',
+  '3-1반':          '과학실 옆 계단 방향으로 이동하세요',
+  '대형강의실':     '과학실 옆 계단 방향으로 이동하세요',
+  'IT·토론학습실':  '과학실 옆 계단 방향으로 이동하세요',
+};
+
+/* =====================================================
+   계단에서 내린 후 목적지까지 안내
+   (도착 층 + 목적지 장소 기준)
+   ===================================================== */
+const FROM_STAIR = {
+  /* ── 1층 ── */
+  '1_교문':             '로비 옆 계단에서 나와 외부로 나가면 교문이 있습니다',
+  '1_지킴이실':         '로비 옆 계단에서 나와 외부로 나가면 지킴이실이 있습니다',
+  '1_식당구역':         '매점 옆 계단에서 나와 오른쪽으로 꺾으면 바로 식당구역이 있습니다',
+  '1_매점':             '매점 옆 계단·EV에서 나오면 바로 매점이 있습니다',
+  '1_로비':             '로비 옆 계단에서 나오면 바로 로비가 있습니다',
+  '1_당직실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 바로 당직실이 있습니다',
+  '1_조회대':           '로비 옆 계단에서 나와 외부 방향으로 나가면 조회대가 있습니다',
+  '1_행정실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 당직실 다음에 행정실이 있습니다',
+  '1_교장실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 행정실 다음에 교장실이 있습니다',
+  '1_문서고':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 교장실 다음에 문서고가 있습니다',
+  '1_인쇄실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 문서고 다음에 인쇄실이 있습니다',
+  '1_보건실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 복도 끝에 보건실이 있습니다',
+  '1_통합교육지원실 1': '매점 옆 계단에서 나와 왼쪽으로 꺾으면 통합교육지원실4 맞은편에 1·2·3이 있습니다. 직업교육실 옆 계단에서 나와 왼쪽으로 꺾어 직진해도 됩니다',
+  '1_통합교육지원실 2': '매점 옆 계단에서 나와 왼쪽으로 꺾으면 통합교육지원실4 맞은편에 1·2·3이 있습니다. 직업교육실 옆 계단에서 나와 왼쪽으로 꺾어 직진해도 됩니다',
+  '1_통합교육지원실 3': '매점 옆 계단에서 나와 왼쪽으로 꺾으면 통합교육지원실4 맞은편에 1·2·3이 있습니다. 직업교육실 옆 계단에서 나와 왼쪽으로 꺾어 직진해도 됩니다',
+  '1_통합교육지원실 4': '매점 옆 계단·EV에서 나와 왼쪽으로 꺾으면 바로 통합교육지원실4가 있습니다',
+  '1_특수교육교무실':   '직업교육실 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 특수교육교무실이 있습니다',
+  '1_생활교육실':       '직업교육실 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 생활교육실이 있습니다',
+  '1_직업교육실':       '직업교육실 옆 계단에서 나오면 바로 직업교육실이 있습니다',
+  '1_시청각실':         '직업교육실 옆 계단에서 나와 오른쪽으로 꺾으면 시청각실이 있습니다',
+  '1_방송실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 복도 위쪽에 방송실이 있습니다',
+  '1_휴게실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 복도 위쪽에 휴게실이 있습니다',
+
+  /* ── 2층 ── */
+  '2_1-1반':          '복도 끝 계단에서 나와 오른쪽으로 꺾으면 바로 1-1반이 있습니다',
+  '2_1-2반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-1반, 1-2반 순으로 나옵니다',
+  '2_1-3반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-3반이 나옵니다. EV 옆 계단을 이용했다면 오른쪽으로 꺾어 직진하세요',
+  '2_1-4반':          'EV 옆 계단을 이용했다면 오른쪽으로 꺾으면 바로 1학년실과 1-4반이 있습니다',
+  '2_1학년실':        'EV 옆 계단에서 나와 오른쪽으로 꺾으면 바로 1학년실이 있습니다',
+  '2_홈베이스':       '로비 옆 계단에서 나와 오른쪽으로 꺾으면 홈베이스가 있습니다',
+  '2_본교무실':       '로비 옆 계단에서 나와 직진하면 바로 본교무실이 있습니다',
+  '2_교무실':         '로비 옆 계단에서 나와 직진하면 바로 본교무실이 있습니다',
+  '2_진로진학상담실': 'EV 옆 계단에서 나와 왼쪽으로 꺾으면 진로진학상담실이 바로 보입니다',
+  '2_1-5반':          'EV 옆 계단에서 나와 왼쪽으로 꺾으면 1-5반이 있습니다',
+  '2_종합학습실 1':   'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 종합학습실1이 있습니다',
+  '2_서버실':         'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 서버실이 있습니다',
+  '2_진로활동실':     'EV 옆 계단에서 나와 왼쪽으로 꺾어 끝까지 직진하면 진로활동실이 있습니다',
+  '2_도서관':         'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진 후 진로활동실에서 오른쪽으로 꺾으면 도서관입니다. 또는 로비 옆 계단에서 왼쪽으로 꺾어 평가실 방향으로 가다가 다시 왼쪽으로 꺾으면 도서관입니다',
+  '2_평가실':         '로비 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진하면 평가실이 있습니다',
+  '2_협의실':         '로비 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진하면 평가실 다음에 협의실이 있습니다',
+  '2_컴퓨터실습실':   '로비 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진하면 평가실, 협의실 다음에 컴퓨터실습실이 있습니다',
+  '2_정보과연구실':   '로비 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진하면 정보과연구실이 있습니다',
+  '2_강당':           '로비 옆 계단에서 나와 직진 후 본교무실 왼쪽의 강당연결통로를 따라 이동하면 강당입니다',
+  '2_체육과연구실':   '로비 옆 계단에서 나와 강당연결통로를 따라 강당으로 이동하면 강당 옆에 체육과연구실이 있습니다',
+  '2_샤워실':         '로비 옆 계단에서 나와 강당연결통로를 따라 강당으로 이동하면 샤워실이 있습니다',
+
+  /* ── 3층 ── */
+  '3_1-10반':         '복도 끝 계단에서 나와 오른쪽으로 꺾으면 바로 1-10반이 있습니다',
+  '3_1-9반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-10반 다음에 1-9반이 있습니다',
+  '3_1-8반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-8반이 나옵니다. EV 옆 계단을 이용했다면 오른쪽으로 꺾어 직진하세요',
+  '3_1-7반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-7반이 나옵니다. EV 옆 계단을 이용했다면 오른쪽으로 꺾어 직진하세요',
+  '3_1-6반':          'EV 옆 계단에서 나와 오른쪽으로 꺾으면 수석교사실 다음에 1-6반이 있습니다',
+  '3_수석교사실':     'EV 옆 계단에서 나오면 앞 살짝 오른쪽에 수석교사실이 바로 보입니다',
+  '3_소형홈베이스':   'EV 옆 계단에서 나와 직진하면 소형홈베이스가 있습니다',
+  '3_온라인수업제작실':'EV 옆 계단에서 나와 직진하면 소형홈베이스 다음에 온라인수업제작실이 있습니다',
+  '3_수업카페':       'EV 옆 계단에서 나와 직진하면 소형홈베이스, 온라인수업제작실 다음에 수업카페가 있습니다. 또는 로비 옆 계단에서 나와 오른쪽으로 꺾으면 수업카페가 있습니다',
+  '3_미술실':         '로비 옆 계단에서 나와 직진하면 미술실이 있습니다',
+  '3_기술준비실':     'EV 옆 계단에서 나와 왼쪽으로 꺾으면 기술준비실이 있습니다',
+  '3_기술실상상제작소':'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 기술실상상제작소가 있습니다',
+  '3_가정실':         'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 가정실이 있습니다',
+  '3_가정준비실':     'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 가정준비실이 있습니다',
+  '3_남자휴게실':     'EV 옆 계단에서 나와 왼쪽으로 꺾으면 맞은편에 남자휴게실이 있습니다',
+  '3_여자휴게실':     'EV 옆 계단에서 나와 왼쪽으로 꺾으면 맞은편에 여자휴게실이 있습니다',
+  '3_과학실 1':       '로비 옆 계단에서 나와 왼쪽으로 꺾으면 바로 과학실1이 있습니다',
+  '3_과학교과연구실': '로비 옆 계단에서 나와 왼쪽으로 꺾어 직진 후 한 번 더 꺾으면 과학교과연구실이 있습니다',
+  '3_과학실 2':       '로비 옆 계단에서 나와 왼쪽으로 꺾어 직진 후 한 번 더 꺾으면 과학교과연구실 다음에 과학실2가 있습니다',
+  '3_과학준비실 1':   '로비 옆 계단에서 나와 왼쪽으로 꺾어 한 번 더 꺾으면 과학준비실1이 있습니다',
+  '3_과학실 3':       '로비 옆 계단에서 나와 왼쪽으로 꺾어 한 번 더 꺾으면 과학실3이 있습니다',
+  '3_과학준비실 2':   '로비 옆 계단에서 나와 왼쪽으로 꺾어 한 번 더 꺾으면 과학준비실2가 있습니다',
+
+  /* ── 4층 ── */
+  '4_2-2반':          '복도 끝 계단에서 나와 오른쪽으로 꺾으면 바로 2-2반이 있습니다',
+  '4_2-3반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 2-2반 다음에 2-3반이 있습니다',
+  '4_2-4반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 2-4반이 나옵니다. EV 옆 계단을 이용했다면 오른쪽으로 꺾어 직진하세요',
+  '4_2-5반':          'EV 옆 계단에서 나와 오른쪽으로 꺾으면 2학년실 맞은편에 양치실이 있고 바로 2-5반이 있습니다',
+  '4_2학년실':        'EV 옆 계단에서 나와 오른쪽으로 꺾으면 바로 2학년실이 있습니다',
+  '4_홈베이스':       'EV 옆 계단에서 나와 직진하면 홈베이스가 있습니다. 또는 로비 옆 계단에서 나와 오른쪽으로 꺾어도 홈베이스가 있습니다',
+  '4_2-6반':          'EV 옆 계단에서 나와 왼쪽으로 꺾으면 2-6반부터 차례로 있습니다',
+  '4_2-7반':          'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 2-6반 다음에 2-7반이 있습니다',
+  '4_2-8반':          'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 2-8반이 있습니다',
+  '4_2-9반':          'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 2-9반이 있습니다',
+  '4_그룹학습실':     'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 교실 맞은편에 그룹학습실이 있습니다',
+  '4_음악실':         '로비 옆 계단에서 나와 직진하면 음악실이 있습니다',
+  '4_다목적수업교실': '로비 옆 계단에서 나와 왼쪽으로 꺾으면 복도가 나오고, 복도 아래쪽에 다목적수업교실이 있습니다',
+  '4_2-1반':          '로비 옆 계단에서 나와 왼쪽으로 꺾으면 복도가 나오고, 다목적수업교실 다음에 2-1반이 있습니다',
+  '4_중형강의실':     '로비 옆 계단에서 나와 왼쪽으로 꺾으면 복도가 나오고, 2-1반 다음에 중형강의실이 있습니다',
+  '4_위클래스상담실': '로비 옆 계단에서 나와 왼쪽으로 꺾으면 복도가 나오고, 중형강의실 다음에 위클래스상담실이 있습니다',
+  '4_생활안전교육부': '로비 옆 계단에서 나와 왼쪽으로 꺾으면 복도가 나오고, 복도 위쪽(맞은편)에 생활안전교육부가 있습니다',
+
+  /* ── 5층 ── */
+  '5_3-2반':          '복도 끝 계단에서 나와 오른쪽으로 꺾으면 바로 3-2반이 있습니다',
+  '5_3-3반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 3-2반 다음에 3-3반이 있습니다',
+  '5_3-4반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 3-4반이 나옵니다. EV 옆 계단을 이용했다면 오른쪽으로 꺾어 직진하세요',
+  '5_3-5반':          'EV 옆 계단에서 나와 오른쪽으로 꺾으면 3학년실 맞은편에 양치실이 있고 바로 3-5반이 있습니다',
+  '5_3학년실':        'EV 옆 계단에서 나와 오른쪽으로 꺾으면 바로 3학년실이 있습니다',
+  '5_홈베이스':       'EV 옆 계단에서 나와 직진하면 홈베이스가 있습니다. 또는 로비 옆 계단에서 나와 오른쪽으로 꺾어도 홈베이스가 있습니다',
+  '5_3-6반':          'EV 옆 계단에서 나와 왼쪽으로 꺾으면 3-6반부터 차례로 있습니다',
+  '5_3-7반':          'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 3-6반 다음에 3-7반이 있습니다',
+  '5_3-8반':          'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 3-8반이 있습니다',
+  '5_3-9반':          'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 3-9반이 있습니다',
+  '5_진학상담실':     'EV 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 교실 맞은편에 진학상담실이 있습니다',
+  '5_다목적실':       '로비 옆 계단에서 나와 직진하면 다목적실이 있습니다',
+  '5_자습실':         '로비 옆 계단에서 나와 왼쪽으로 꺾으면 복도가 나오고, 복도 아래쪽에 자습실이 있습니다',
+  '5_3-1반':          '로비 옆 계단에서 나와 왼쪽으로 꺾으면 복도가 나오고, 자습실 다음에 3-1반이 있습니다',
+  '5_대형강의실':     '로비 옆 계단에서 나와 왼쪽으로 꺾으면 복도가 나오고, 3-1반 다음에 대형강의실이 있습니다',
+  '5_IT·토론학습실':  '로비 옆 계단에서 나와 왼쪽으로 꺾으면 복도가 나오고, 복도 위쪽(맞은편)에 IT·토론학습실이 있습니다',
+};
+
+/* =====================================================
+   같은 층 내 이동 안내
+   ===================================================== */
+const SAME_FLOOR_DIRECT = {
+  /* ── 1층 같은 층 ── */
+  '1_매점_식당구역':              '매점에서 나와 왼쪽으로 꺾으면 바로 식당구역입니다',
+  '1_식당구역_매점':              '식당에서 나와 오른쪽으로 꺾으면 바로 매점이 있습니다',
+  '1_매점_통합교육지원실 4':      '매점에서 복도 끝 계단 방향으로 직진 후 왼쪽으로 꺾으면 통합교육지원실4가 있습니다',
+  '1_통합교육지원실 4_직업교육실':'복도를 따라 오른쪽 끝까지 직진하면 직업교육실이 있습니다',
+  '1_통합교육지원실 4_통합교육지원실 1':'복도를 따라 오른쪽으로 직진하면 맞은편에 통합교육지원실 1·2·3이 있습니다',
+  '1_직업교육실_시청각실':        '직업교육실에서 나와 아래쪽으로 꺾으면 시청각실이 있습니다',
+  '1_시청각실_직업교육실':        '시청각실에서 나와 위쪽으로 꺾으면 직업교육실이 있습니다',
+  '1_당직실_행정실':              '당직실에서 나와 오른쪽으로 직진하면 행정실이 있습니다',
+  '1_행정실_교장실':              '행정실 바로 옆이 교장실입니다',
+  '1_교장실_행정실':              '교장실 바로 옆이 행정실입니다',
+  '1_교장실_보건실':              '교장실에서 나와 오른쪽으로 직진하면 문서고·인쇄실을 지나 보건실이 있습니다',
+  '1_보건실_행정실':              '보건실에서 나와 왼쪽으로 직진하면 인쇄실·문서고를 지나 행정실이 있습니다',
+  '1_로비_당직실':                '로비에서 왼쪽으로 꺾으면 바로 당직실이 있습니다',
+  '1_당직실_로비':                '당직실에서 나와 오른쪽으로 꺾으면 로비가 있습니다',
+  '1_방송실_휴게실':              '방송실 바로 옆이 휴게실입니다',
+  '1_휴게실_방송실':              '휴게실 바로 옆이 방송실입니다',
+
+  /* ── 2층 같은 층 ── */
+  '2_1-1반_1-2반':   '오른쪽으로 직진하면 바로 1-2반이 있습니다',
+  '2_1-1반_1-3반':   '오른쪽으로 직진하면 1-2반, 1-3반 순으로 있습니다',
+  '2_1-1반_1-4반':   '오른쪽으로 직진하면 1-2반, 1-3반, 1-4반 순으로 있습니다',
+  '2_1-4반_1-1반':   '왼쪽으로 직진하면 1-3반, 1-2반, 1-1반 순으로 있습니다',
+  '2_1-4반_1학년실': '바로 옆이 1학년실입니다',
+  '2_홈베이스_본교무실': '홈베이스에서 본교무실 방향으로 직진하면 바로 있습니다',
+  '2_홈베이스_교무실':   '홈베이스에서 본교무실 방향으로 직진하면 바로 있습니다',
+  '2_본교무실_홈베이스': '본교무실에서 나와 오른쪽으로 꺾으면 홈베이스가 있습니다',
+  '2_본교무실_강당':     '본교무실 왼쪽의 강당연결통로를 따라 이동하면 강당입니다',
+  '2_교무실_강당':       '본교무실 왼쪽의 강당연결통로를 따라 이동하면 강당입니다',
+  '2_진로진학상담실_1-5반': '바로 맞은편이 1-5반입니다',
+  '2_1-5반_진로진학상담실': '바로 맞은편이 진로진학상담실입니다',
+  '2_진로활동실_도서관':    '진로활동실에서 오른쪽으로 꺾으면 바로 도서관입니다',
+  '2_도서관_진로활동실':    '도서관에서 나와 왼쪽으로 꺾으면 진로활동실이 있습니다',
+
+  /* ── 3층 같은 층 ── */
+  '3_1-10반_1-9반':    '오른쪽으로 직진하면 바로 1-9반이 있습니다',
+  '3_1-6반_수석교사실':'수석교사실이 바로 옆에 있습니다',
+  '3_수석교사실_소형홈베이스': '수석교사실 앞 복도에서 직진하면 소형홈베이스가 있습니다',
+  '3_소형홈베이스_수업카페':   '소형홈베이스에서 직진하면 온라인수업제작실, 수업카페 순으로 있습니다',
+  '3_수업카페_과학실 1':        '수업카페에서 나와 로비 옆 계단 방향으로 이동한 후 왼쪽으로 꺾으면 과학실1입니다',
+  '3_기술준비실_남자휴게실':   '복도 맞은편에 남자휴게실이 있습니다',
+  '3_남자휴게실_기술준비실':   '복도 맞은편에 기술준비실이 있습니다',
+  '3_과학실 1_과학실 2':        '왼쪽으로 꺾어 직진하면 과학교과연구실 다음에 과학실2가 있습니다',
+
+  /* ── 4층 같은 층 ── */
+  '4_2-2반_2-3반':    '오른쪽으로 직진하면 바로 2-3반이 있습니다',
+  '4_2-5반_2학년실':  '바로 옆이 2학년실입니다',
+  '4_2학년실_양치실': '2학년실 맞은편에 양치실이 있습니다',
+  '4_2-6반_그룹학습실':'복도 맞은편에 그룹학습실이 있습니다',
+  '4_2-1반_중형강의실':'바로 옆이 중형강의실입니다',
+  '4_2-1반_생활안전교육부':'복도 맞은편에 생활안전교육부가 있습니다',
+  '4_홈베이스_2-6반':  '홈베이스에서 2-6반 쪽 복도로 이동하면 바로 있습니다',
+
+  /* ── 5층 같은 층 ── */
+  '5_3-2반_3-3반':    '오른쪽으로 직진하면 바로 3-3반이 있습니다',
+  '5_3-5반_3학년실':  '바로 옆이 3학년실입니다',
+  '5_3학년실_양치실': '3학년실 맞은편에 양치실이 있습니다',
+  '5_3-6반_진학상담실':'복도 맞은편에 진학상담실이 있습니다',
+  '5_3-1반_대형강의실':'바로 옆이 대형강의실입니다',
+  '5_3-1반_IT·토론학습실':'복도 맞은편에 IT·토론학습실이 있습니다',
+  '5_홈베이스_3-6반':  '홈베이스에서 3-6반 쪽 복도로 이동하면 바로 있습니다',
+};
+
+/* =====================================================
+   각 장소가 속한 계단 그룹
+   'ev'  = EV쪽 계단 (복도 중간)
+   'end' = 복도 끝 계단
+   'bot' = 하단 계단 (과학실/음악실/다목적실 옆)
+   'lob' = 로비 옆 계단 (1층)
+   'job' = 직업교육실 옆 계단 (1층)
+   ===================================================== */
+const STAIR_GROUP = {
+  /* 1층 */
+  '교문':'lob','지킴이실':'lob','식당구역':'lob','매점':'lob',
+  '로비':'lob','당직실':'lob','조회대':'lob','행정실':'lob',
+  '교장실':'lob','문서고':'lob','인쇄실':'lob','보건실':'lob',
+  '방송실':'lob','휴게실':'lob',
+  '통합교육지원실 1':'job','통합교육지원실 2':'job',
+  '통합교육지원실 3':'job','통합교육지원실 4':'job',
+  '특수교육교무실':'job','생활교육실':'job','직업교육실':'job',
+  '시청각실':'job','강당':'lob','체육과연구실':'lob','샤워실':'lob',
+  /* 2층 */
+  '1-1반':'end','1-2반':'end','1-3반':'end','1-4반':'ev',
+  '1학년실':'ev','본교무실':'lob','홈베이스':'lob',
+  '진로진학상담실':'ev','1-5반':'ev','종합학습실 1':'ev',
+  '서버실':'ev','진로활동실':'ev','도서관':'lob',
+  '평가실':'lob','협의실':'lob','컴퓨터실습실':'lob','정보과연구실':'lob',
+  /* 3층 */
+  '1-6반':'ev','1-7반':'ev','1-8반':'ev','1-9반':'ev','1-10반':'end',
+  '수석교사실':'ev','소형홈베이스':'ev','온라인수업제작실':'ev','수업카페':'ev',
+  '기술준비실':'ev','기술실상상제작소':'ev','가정실':'ev','가정준비실':'ev',
+  '남자휴게실':'ev','여자휴게실':'ev',
+  '미술실':'bot','과학실 1':'bot','과학교과연구실':'bot',
+  '과학실 2':'bot','과학준비실 1':'bot','과학실 3':'bot','과학준비실 2':'bot',
+  /* 4층 */
+  '2-2반':'end','2-3반':'end','2-4반':'end','2-5반':'ev',
+  '2학년실':'ev','홈베이스':'ev',
+  '2-6반':'ev','2-7반':'ev','2-8반':'ev','2-9반':'ev','그룹학습실':'ev',
+  '음악실':'bot','다목적수업교실':'bot','2-1반':'bot',
+  '중형강의실':'bot','위클래스상담실':'bot','생활안전교육부':'bot',
+  /* 5층 */
+  '3-2반':'end','3-3반':'end','3-4반':'end','3-5반':'ev',
+  '3학년실':'ev',
+  '3-6반':'ev','3-7반':'ev','3-8반':'ev','3-9반':'ev','진학상담실':'ev',
+  '다목적실':'bot','자습실':'bot','3-1반':'bot',
+  '대형강의실':'bot','IT·토론학습실':'bot',
+};
+
+/* 계단 그룹별 이름 */
+const STAIR_NAME = {
+  'ev':  'EV쪽 계단',
+  'end': '복도 끝 계단',
+  'bot': '하단 계단',
+  'lob': '로비 옆 계단',
+  'job': '직업교육실 옆 계단',
+};
+
+/* 어느 계단을 쓸지 결정
+   - 같은 계단 그룹이면 그 계단 사용
+   - 다르면 목적지 계단 우선 (도착 후 바로 근처에 있으니까)
+   - end → ev 는 ev 우선 (복도 끝 계단은 올라가서 한참 걸어야 함)
+*/
+function chooseStair(fromName, toName, floor) {
+  const fg = STAIR_GROUP[fromName];
+  const tg = STAIR_GROUP[toName];
+  if (!fg && !tg) return 'ev';
+  if (!tg) return fg;
+  if (!fg) return tg;
+  if (fg === tg) return fg;
+  /* 다른 층 이동 시: 목적지 계단 우선 */
+  return tg;
+}
+
+/* 계단 그룹별 TO 안내 (출발지에서 해당 계단으로 이동) */
+const TO_STAIR_BY_GROUP = {
+  /* ── 1층 ── */
+  '1_lob': { // 로비 옆 계단
+    '교문':             '교문에서 들어와 안쪽으로 직진하면 로비 옆 계단이 있습니다',
+    '지킴이실':         '지킴이실에서 안쪽으로 직진하면 로비 옆 계단이 있습니다',
+    '식당구역':         '식당에서 나와 오른쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+    '매점':             '매점에서 안쪽으로 직진하면 로비 옆 계단이 있습니다',
+    '로비':             '로비 바로 옆 계단을 이용하세요',
+    '당직실':           '당직실에서 나와 왼쪽으로 꺾으면 로비 옆 계단이 있습니다',
+    '조회대':           '조회대에서 안쪽으로 들어가면 로비 옆 계단이 있습니다',
+    '행정실':           '행정실에서 나와 오른쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+    '교장실':           '교장실에서 나와 오른쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+    '문서고':           '문서고에서 나와 오른쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+    '인쇄실':           '인쇄실에서 나와 오른쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+    '보건실':           '보건실에서 나와 왼쪽으로 꺾어 직진하면 로비 옆 계단이 있습니다',
+    '방송실':           '방송실에서 나와 오른쪽으로 꺾어 로비 옆 계단을 이용하세요',
+    '휴게실':           '휴게실에서 나와 오른쪽으로 꺾어 로비 옆 계단을 이용하세요',
+    '강당':             '강당연결통로를 통해 본관으로 이동한 후 로비 옆 계단을 이용하세요',
+    '체육과연구실':     '강당연결통로를 통해 본관으로 이동한 후 로비 옆 계단을 이용하세요',
+    '샤워실':           '강당연결통로를 통해 본관으로 이동한 후 로비 옆 계단을 이용하세요',
+    '통합교육지원실 1': '복도를 따라 왼쪽(매점 방향)으로 이동한 후 로비 옆 계단을 이용하세요',
+    '통합교육지원실 2': '복도를 따라 왼쪽(매점 방향)으로 이동한 후 로비 옆 계단을 이용하세요',
+    '통합교육지원실 3': '복도를 따라 왼쪽(매점 방향)으로 이동한 후 로비 옆 계단을 이용하세요',
+    '통합교육지원실 4': '매점 쪽으로 이동한 후 로비 옆 계단을 이용하세요',
+    '특수교육교무실':   '복도를 따라 왼쪽으로 이동한 후 로비 옆 계단을 이용하세요',
+    '생활교육실':       '복도를 따라 왼쪽으로 이동한 후 로비 옆 계단을 이용하세요',
+    '직업교육실':       '복도를 따라 왼쪽으로 이동한 후 로비 옆 계단을 이용하세요',
+    '시청각실':         '시청각실에서 나와 왼쪽으로 이동한 후 로비 옆 계단을 이용하세요',
+  },
+  '1_job': { // 직업교육실 옆 계단
+    '교문':             '교문에서 들어와 통합교육지원실 복도를 따라 직진하면 직업교육실 옆 계단이 있습니다',
+    '지킴이실':         '지킴이실에서 통합교육지원실 복도 방향으로 이동하면 직업교육실 옆 계단이 있습니다',
+    '식당구역':         '식당에서 나와 오른쪽으로 꺾어 통합교육지원실 복도 끝까지 가면 직업교육실 옆 계단이 있습니다',
+    '매점':             '매점에서 나와 왼쪽으로 꺾어 통합교육지원실 복도를 따라 직진하면 직업교육실 옆 계단이 있습니다',
+    '통합교육지원실 1': '복도를 따라 오른쪽으로 직진하면 직업교육실 옆 계단이 있습니다',
+    '통합교육지원실 2': '복도를 따라 오른쪽으로 직진하면 직업교육실 옆 계단이 있습니다',
+    '통합교육지원실 3': '복도를 따라 오른쪽으로 직진하면 직업교육실 옆 계단이 있습니다',
+    '통합교육지원실 4': '바로 옆 매점 쪽에서 통합교육지원실 복도를 따라 직진하면 직업교육실 옆 계단이 있습니다',
+    '특수교육교무실':   '복도를 따라 오른쪽으로 직진하면 직업교육실 옆 계단이 있습니다',
+    '생활교육실':       '생활교육실 바로 옆이 직업교육실 옆 계단입니다',
+    '직업교육실':       '직업교육실 바로 옆 계단을 이용하세요',
+    '시청각실':         '시청각실에서 나와 오른쪽 직업교육실 옆 계단을 이용하세요',
+    '행정실':           '행정실에서 나와 통합교육지원실 복도 방향으로 이동하면 직업교육실 옆 계단이 있습니다',
+    '교장실':           '교장실에서 나와 통합교육지원실 복도 방향으로 이동하면 직업교육실 옆 계단이 있습니다',
+    '보건실':           '보건실에서 나와 통합교육지원실 복도 방향으로 이동하면 직업교육실 옆 계단이 있습니다',
+    '로비':             '로비에서 통합교육지원실 복도 방향으로 이동하면 직업교육실 옆 계단이 있습니다',
+  },
+  /* ── 2층 ── */
+  '2_ev': {
+    '1-1반':          '복도를 따라 오른쪽(1-4반 방향)으로 직진하면 EV쪽 계단이 있습니다',
+    '1-2반':          '복도를 따라 오른쪽(1-4반 방향)으로 직진하면 EV쪽 계단이 있습니다',
+    '1-3반':          '복도를 따라 오른쪽(1-4반 방향)으로 직진하면 EV쪽 계단이 있습니다',
+    '1-4반':          '바로 옆 EV쪽 계단을 이용하세요',
+    '1학년실':        'EV쪽 계단이 바로 옆에 있습니다',
+    '본교무실':       '본교무실에서 나와 오른쪽 홈베이스 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '홈베이스':       '홈베이스에서 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '진로진학상담실': 'EV쪽 계단이 바로 옆에 있습니다',
+    '1-5반':          'EV쪽 계단 방향(교실 쪽)으로 이동하세요',
+    '종합학습실 1':   'EV쪽 계단 방향(교실 쪽)으로 이동하세요',
+    '서버실':         'EV쪽 계단 방향(교실 쪽)으로 이동하세요',
+    '진로활동실':     '진로활동실에서 왔던 방향으로 되돌아가 EV쪽 계단을 이용하세요',
+    '도서관':         '도서관에서 나와 EV 방향(교실 쪽)으로 이동하면 EV쪽 계단이 있습니다',
+    '평가실':         '평가실에서 나와 위쪽 복도를 따라 EV쪽 계단 방향으로 이동하세요',
+    '협의실':         '협의실에서 나와 위쪽 복도를 따라 EV쪽 계단 방향으로 이동하세요',
+    '컴퓨터실습실':   '컴퓨터실습실에서 나와 위쪽 복도를 따라 EV쪽 계단 방향으로 이동하세요',
+    '정보과연구실':   '정보과연구실에서 나와 위쪽 복도를 따라 EV쪽 계단 방향으로 이동하세요',
+    '강당':           '강당연결통로를 통해 본관으로 이동한 후 EV쪽 계단을 이용하세요',
+    '체육과연구실':   '강당연결통로를 통해 본관으로 이동한 후 EV쪽 계단을 이용하세요',
+    '샤워실':         '강당연결통로를 통해 본관으로 이동한 후 EV쪽 계단을 이용하세요',
+  },
+  '2_end': {
+    '1-1반':          '1-1반 바로 옆 복도 끝 계단을 이용하세요',
+    '1-2반':          '복도를 따라 왼쪽(1-1반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '1-3반':          '복도를 따라 왼쪽(1-1반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '1-4반':          '복도를 따라 왼쪽(1-1반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '1학년실':        '복도를 따라 왼쪽(1-1반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '홈베이스':       '홈베이스에서 교실 복도로 들어가 왼쪽 끝까지 직진하면 복도 끝 계단이 있습니다',
+    '본교무실':       '본교무실에서 교실 복도로 들어가 왼쪽 끝까지 직진하면 복도 끝 계단이 있습니다',
+  },
+  '2_lob': {
+    '1-1반':          '복도를 따라 오른쪽으로 이동한 후 홈베이스 옆 계단을 이용하세요',
+    '1-4반':          '홈베이스 방향으로 이동하면 홈베이스 옆 계단이 있습니다',
+    '홈베이스':       '홈베이스 바로 옆 계단을 이용하세요',
+    '본교무실':       '본교무실 바로 옆 홈베이스 옆 계단을 이용하세요',
+    '도서관':         '도서관에서 나와 왼쪽으로 꺾으면 홈베이스 옆 계단이 있습니다',
+    '평가실':         '평가실에서 나와 위쪽으로 꺾어 홈베이스 옆 계단을 이용하세요',
+    '협의실':         '협의실에서 나와 위쪽으로 꺾어 홈베이스 옆 계단을 이용하세요',
+    '컴퓨터실습실':   '컴퓨터실습실에서 나와 위쪽으로 꺾어 홈베이스 옆 계단을 이용하세요',
+    '정보과연구실':   '정보과연구실에서 나와 위쪽으로 꺾어 홈베이스 옆 계단을 이용하세요',
+    '강당':           '강당연결통로를 통해 본관으로 이동 후 홈베이스 옆 계단을 이용하세요',
+    '진로활동실':     '진로활동실에서 도서관을 지나 홈베이스 옆 계단을 이용하세요',
+    '1-5반':          'EV쪽 계단 방향으로 이동 후 홈베이스 옆 계단을 이용하세요',
+    '체육과연구실':   '강당연결통로를 통해 본관으로 이동 후 홈베이스 옆 계단을 이용하세요',
+    '샤워실':         '강당연결통로를 통해 본관으로 이동 후 홈베이스 옆 계단을 이용하세요',
+  },
+  /* ── 3층 ── */
+  '3_ev': {
+    '1-6반':          'EV쪽 계단이 바로 근처에 있습니다',
+    '1-7반':          '복도를 따라 오른쪽(EV 방향)으로 이동하면 EV쪽 계단이 있습니다',
+    '1-8반':          '복도를 따라 오른쪽(EV 방향)으로 이동하면 EV쪽 계단이 있습니다',
+    '1-9반':          '복도를 따라 오른쪽(EV 방향)으로 이동하면 EV쪽 계단이 있습니다',
+    '1-10반':         '복도를 따라 오른쪽(EV 방향)으로 직진하면 EV쪽 계단이 있습니다',
+    '수석교사실':     'EV쪽 계단이 바로 옆에 있습니다',
+    '소형홈베이스':   '소형홈베이스에서 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '온라인수업제작실':'위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '수업카페':       '위쪽으로 이동해 교실 복도 방향으로 가면 EV쪽 계단이 있습니다',
+    '기술준비실':     'EV쪽 계단이 바로 근처에 있습니다',
+    '기술실상상제작소':'EV쪽 계단 방향으로 이동하세요',
+    '가정실':         'EV쪽 계단 방향으로 이동하세요',
+    '가정준비실':     'EV쪽 계단 방향으로 이동하세요',
+    '남자휴게실':     'EV쪽 계단이 근처에 있습니다',
+    '여자휴게실':     'EV쪽 계단이 근처에 있습니다',
+    '미술실':         '미술실에서 나와 오른쪽 과학실 방향으로 이동 후 EV쪽 계단을 이용하세요',
+    '과학실 1':       '과학실 옆 계단에서 위쪽으로 이동하면 EV쪽 계단이 있습니다',
+    '과학교과연구실': '과학실 방향으로 이동 후 EV쪽 계단을 이용하세요',
+    '과학실 2':       '과학실 방향으로 이동 후 EV쪽 계단을 이용하세요',
+    '과학준비실 1':   '과학실 방향으로 이동 후 EV쪽 계단을 이용하세요',
+    '과학실 3':       '과학실 방향으로 이동 후 EV쪽 계단을 이용하세요',
+    '과학준비실 2':   '과학실 방향으로 이동 후 EV쪽 계단을 이용하세요',
+  },
+  '3_end': {
+    '1-10반':         '1-10반 바로 옆 복도 끝 계단을 이용하세요',
+    '1-9반':          '복도를 따라 왼쪽(1-10반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '1-8반':          '복도를 따라 왼쪽(1-10반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '1-7반':          '복도를 따라 왼쪽(1-10반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '1-6반':          '복도를 따라 왼쪽(1-10반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '수석교사실':     '복도를 따라 왼쪽(1-10반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '소형홈베이스':   '교실 복도로 들어가 왼쪽 끝까지 직진하면 복도 끝 계단이 있습니다',
+  },
+  '3_bot': {
+    '미술실':         '미술실 바로 옆 과학실 옆 계단을 이용하세요',
+    '과학실 1':       '과학실1 바로 옆 계단을 이용하세요',
+    '과학교과연구실': '과학실1 방향으로 이동하면 바로 옆에 계단이 있습니다',
+    '과학실 2':       '과학실1 방향으로 이동하면 바로 옆에 계단이 있습니다',
+    '과학준비실 1':   '과학실1 방향으로 이동하면 바로 옆에 계단이 있습니다',
+    '과학실 3':       '과학실1 방향으로 이동하면 바로 옆에 계단이 있습니다',
+    '과학준비실 2':   '과학실1 방향으로 이동하면 바로 옆에 계단이 있습니다',
+    '수업카페':       '수업카페에서 나와 과학실 방향으로 이동하면 계단이 있습니다',
+    '온라인수업제작실':'아래쪽 수업카페를 지나 과학실 옆 계단을 이용하세요',
+    '소형홈베이스':   '아래쪽 수업카페를 지나 과학실 옆 계단을 이용하세요',
+    '1-6반':          '복도를 따라 아래쪽 과학실 방향으로 내려가면 과학실 옆 계단이 있습니다',
+    '1-7반':          '복도를 따라 아래쪽 과학실 방향으로 내려가면 과학실 옆 계단이 있습니다',
+    '1-8반':          '복도를 따라 아래쪽 과학실 방향으로 내려가면 과학실 옆 계단이 있습니다',
+    '1-9반':          '복도를 따라 아래쪽 과학실 방향으로 내려가면 과학실 옆 계단이 있습니다',
+    '1-10반':         '복도를 따라 아래쪽 과학실 방향으로 내려가면 과학실 옆 계단이 있습니다',
+  },
+  /* ── 4층 ── */
+  '4_ev': {
+    '2-2반':          '복도를 따라 오른쪽(2-5반 방향)으로 직진하면 EV쪽 계단이 있습니다',
+    '2-3반':          '복도를 따라 오른쪽(2-5반 방향)으로 직진하면 EV쪽 계단이 있습니다',
+    '2-4반':          '복도를 따라 오른쪽(2-5반 방향)으로 직진하면 EV쪽 계단이 있습니다',
+    '2-5반':          'EV쪽 계단이 바로 옆에 있습니다',
+    '2학년실':        'EV쪽 계단이 바로 옆에 있습니다',
+    '2-6반':          'EV쪽 계단이 바로 근처에 있습니다',
+    '2-7반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV쪽 계단이 있습니다',
+    '2-8반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV쪽 계단이 있습니다',
+    '2-9반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV쪽 계단이 있습니다',
+    '그룹학습실':     '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV쪽 계단이 있습니다',
+    '홈베이스':       '홈베이스에서 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '음악실':         '음악실에서 나와 위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '2-1반':          '위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '다목적수업교실': '위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '중형강의실':     '위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '위클래스상담실': '위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '생활안전교육부': '위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+  },
+  '4_end': {
+    '2-2반':          '2-2반 바로 옆 복도 끝 계단을 이용하세요',
+    '2-3반':          '복도를 따라 왼쪽(2-2반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '2-4반':          '복도를 따라 왼쪽(2-2반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '2-5반':          '복도를 따라 왼쪽(2-2반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '2학년실':        '복도를 따라 왼쪽(2-2반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '홈베이스':       '교실 복도로 들어가 왼쪽 끝까지 직진하면 복도 끝 계단이 있습니다',
+  },
+  '4_bot': {
+    '음악실':         '음악실 바로 옆 하단 계단을 이용하세요',
+    '2-1반':          '하단 계단 방향으로 이동하세요',
+    '다목적수업교실': '하단 계단 방향으로 이동하세요',
+    '중형강의실':     '하단 계단 방향으로 이동하세요',
+    '위클래스상담실': '하단 계단 방향으로 이동하세요',
+    '생활안전교육부': '하단 계단이 바로 근처에 있습니다',
+    '홈베이스':       '홈베이스에서 오른쪽으로 꺾으면 하단 계단이 있습니다',
+    '2-5반':          '홈베이스 방향으로 이동 후 오른쪽으로 꺾으면 하단 계단이 있습니다',
+    '2-6반':          '홈베이스 방향으로 이동 후 오른쪽으로 꺾으면 하단 계단이 있습니다',
+    '2-9반':          '홈베이스 방향으로 이동 후 오른쪽으로 꺾으면 하단 계단이 있습니다',
+  },
+  /* ── 5층 ── */
+  '5_ev': {
+    '3-2반':          '복도를 따라 오른쪽(3-5반 방향)으로 직진하면 EV쪽 계단이 있습니다',
+    '3-3반':          '복도를 따라 오른쪽(3-5반 방향)으로 직진하면 EV쪽 계단이 있습니다',
+    '3-4반':          '복도를 따라 오른쪽(3-5반 방향)으로 직진하면 EV쪽 계단이 있습니다',
+    '3-5반':          'EV쪽 계단이 바로 옆에 있습니다',
+    '3학년실':        'EV쪽 계단이 바로 옆에 있습니다',
+    '3-6반':          'EV쪽 계단이 바로 근처에 있습니다',
+    '3-7반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV쪽 계단이 있습니다',
+    '3-8반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV쪽 계단이 있습니다',
+    '3-9반':          '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV쪽 계단이 있습니다',
+    '진학상담실':     '복도를 따라 교실 쪽(왼쪽)으로 이동하면 EV쪽 계단이 있습니다',
+    '홈베이스':       '홈베이스에서 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '다목적실':       '다목적실에서 나와 위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '3-1반':          '위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '자습실':         '위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    '대형강의실':     '위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+    'IT·토론학습실':  '위쪽 교실 복도 방향으로 이동하면 EV쪽 계단이 있습니다',
+  },
+  '5_end': {
+    '3-2반':          '3-2반 바로 옆 복도 끝 계단을 이용하세요',
+    '3-3반':          '복도를 따라 왼쪽(3-2반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '3-4반':          '복도를 따라 왼쪽(3-2반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '3-5반':          '복도를 따라 왼쪽(3-2반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '3학년실':        '복도를 따라 왼쪽(3-2반 방향)으로 직진하면 복도 끝 계단이 있습니다',
+    '홈베이스':       '교실 복도로 들어가 왼쪽 끝까지 직진하면 복도 끝 계단이 있습니다',
+  },
+  '5_bot': {
+    '다목적실':       '다목적실 바로 옆 하단 계단을 이용하세요',
+    '3-1반':          '하단 계단 방향으로 이동하세요',
+    '자습실':         '하단 계단 방향으로 이동하세요',
+    '대형강의실':     '하단 계단 방향으로 이동하세요',
+    'IT·토론학습실':  '하단 계단이 바로 근처에 있습니다',
+    '홈베이스':       '홈베이스에서 오른쪽으로 꺾으면 하단 계단이 있습니다',
+    '3-5반':          '홈베이스 방향으로 이동 후 오른쪽으로 꺾으면 하단 계단이 있습니다',
+    '3-6반':          '홈베이스 방향으로 이동 후 오른쪽으로 꺾으면 하단 계단이 있습니다',
+    '3-9반':          '홈베이스 방향으로 이동 후 오른쪽으로 꺾으면 하단 계단이 있습니다',
+  },
+};
+
+/* 계단 그룹+층별 FROM 안내 (해당 계단에서 내린 후 목적지까지) */
+const FROM_STAIR_BY_GROUP = {
+  /* ── 1층 ── */
+  '1_lob': {
+    '교문':             '로비 옆 계단에서 나와 외부로 나가면 교문이 있습니다',
+    '지킴이실':         '로비 옆 계단에서 나와 외부로 나가면 지킴이실이 있습니다',
+    '식당구역':         '로비 옆 계단에서 나와 왼쪽 식당 방향으로 이동하세요',
+    '매점':             '로비 옆 계단에서 나와 매점 방향으로 이동하세요',
+    '로비':             '로비 옆 계단에서 나오면 바로 로비입니다',
+    '당직실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 바로 당직실입니다',
+    '조회대':           '로비 옆 계단에서 나와 외부 방향으로 나가면 조회대가 있습니다',
+    '행정실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 당직실 다음에 행정실이 있습니다',
+    '교장실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 행정실 다음에 교장실이 있습니다',
+    '문서고':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 교장실 다음에 문서고가 있습니다',
+    '인쇄실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 문서고 다음에 인쇄실이 있습니다',
+    '보건실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 복도 끝에 보건실이 있습니다',
+    '방송실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 복도 위쪽에 방송실이 있습니다',
+    '휴게실':           '로비 옆 계단에서 나와 왼쪽으로 유턴하면 복도 위쪽에 휴게실이 있습니다',
+    '강당':             '로비 옆 계단에서 나와 직진 후 본교무실 왼쪽 강당연결통로를 따라 강당으로 이동하세요',
+    '체육과연구실':     '로비 옆 계단에서 나와 강당연결통로를 따라 강당 내부로 이동하면 체육과연구실이 있습니다',
+    '샤워실':           '로비 옆 계단에서 나와 강당연결통로를 따라 강당 내부로 이동하면 샤워실이 있습니다',
+  },
+  '1_job': {
+    '통합교육지원실 1': '직업교육실 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 통합교육지원실 1·2·3이 있습니다',
+    '통합교육지원실 2': '직업교육실 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 통합교육지원실 1·2·3이 있습니다',
+    '통합교육지원실 3': '직업교육실 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 통합교육지원실 1·2·3이 있습니다',
+    '통합교육지원실 4': '직업교육실 옆 계단에서 나오면 통합교육지원실4가 바로 옆에 있습니다',
+    '특수교육교무실':   '직업교육실 옆 계단에서 나와 왼쪽으로 꺾으면 특수교육교무실이 있습니다',
+    '생활교육실':       '직업교육실 옆 계단에서 나오면 바로 생활교육실이 있습니다',
+    '직업교육실':       '직업교육실 옆 계단에서 나오면 바로 직업교육실입니다',
+    '시청각실':         '직업교육실 옆 계단에서 나와 오른쪽으로 꺾으면 시청각실이 있습니다',
+    '매점':             '직업교육실 옆 계단에서 나와 왼쪽 끝까지 직진하면 매점이 있습니다',
+    '식당구역':         '직업교육실 옆 계단에서 나와 왼쪽 끝까지 직진 후 왼쪽으로 꺾으면 식당구역입니다',
+  },
+  /* ── 2층 ── */
+  '2_ev': {
+    '1-1반':          'EV쪽 계단에서 나와 오른쪽으로 꺾어 복도 끝까지 직진하면 1-1반이 있습니다',
+    '1-2반':          'EV쪽 계단에서 나와 오른쪽으로 꺾어 직진하면 1-4반·1-3반·1-2반 순으로 나옵니다',
+    '1-3반':          'EV쪽 계단에서 나와 오른쪽으로 꺾으면 1-4반 다음에 1-3반이 있습니다',
+    '1-4반':          'EV쪽 계단에서 나와 오른쪽으로 꺾으면 바로 1-4반이 있습니다',
+    '1학년실':        'EV쪽 계단에서 나와 오른쪽으로 꺾으면 바로 1학년실이 있습니다',
+    '홈베이스':       'EV쪽 계단에서 나와 직진하면 홈베이스가 있습니다',
+    '본교무실':       'EV쪽 계단에서 나와 직진하면 홈베이스·본교무실이 있습니다',
+    '진로진학상담실': 'EV쪽 계단에서 나와 왼쪽으로 꺾으면 바로 진로진학상담실이 있습니다',
+    '1-5반':          'EV쪽 계단에서 나와 왼쪽으로 꺾으면 진로진학상담실 맞은편에 1-5반이 있습니다',
+    '종합학습실 1':   'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 1-5반 다음에 종합학습실1이 있습니다',
+    '서버실':         'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 종합학습실1 다음에 서버실이 있습니다',
+    '진로활동실':     'EV쪽 계단에서 나와 왼쪽으로 꺾어 끝까지 직진하면 진로활동실이 있습니다',
+    '도서관':         'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진 → 진로활동실에서 오른쪽으로 꺾으면 도서관입니다',
+    '평가실':         'EV쪽 계단에서 나와 직진 후 왼쪽으로 완전히 꺾어 직진하면 평가실이 있습니다',
+    '협의실':         'EV쪽 계단에서 나와 직진 후 왼쪽으로 완전히 꺾어 직진하면 평가실 다음에 협의실이 있습니다',
+    '컴퓨터실습실':   'EV쪽 계단에서 나와 직진 후 왼쪽으로 완전히 꺾어 직진하면 협의실 다음에 컴퓨터실습실이 있습니다',
+    '정보과연구실':   'EV쪽 계단에서 나와 직진 후 왼쪽으로 완전히 꺾어 직진하면 복도 끝 정보과연구실이 있습니다',
+  },
+  '2_end': {
+    '1-1반':          '복도 끝 계단에서 나와 오른쪽으로 꺾으면 바로 1-1반이 있습니다',
+    '1-2반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-1반 다음에 1-2반이 있습니다',
+    '1-3반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-3반이 있습니다',
+    '1-4반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-4반이 있습니다',
+    '1학년실':        '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1학년실이 있습니다',
+    '홈베이스':       '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 홈베이스가 있습니다',
+  },
+  '2_lob': {
+    '강당':           '홈베이스 옆 계단에서 나와 직진 후 본교무실 왼쪽 강당연결통로를 따라 강당으로 이동하세요',
+    '체육과연구실':   '홈베이스 옆 계단에서 나와 강당연결통로를 따라 강당 내부로 이동하면 체육과연구실이 있습니다',
+    '샤워실':         '홈베이스 옆 계단에서 나와 강당연결통로를 따라 강당 내부로 이동하면 샤워실이 있습니다',
+    '홈베이스':       '홈베이스 옆 계단에서 나오면 바로 홈베이스입니다',
+    '본교무실':       '홈베이스 옆 계단에서 나와 직진하면 바로 본교무실입니다',
+    '도서관':         '홈베이스 옆 계단에서 나와 직진 후 도서관 쪽 복도로 이동하면 도서관이 있습니다',
+    '평가실':         '홈베이스 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진하면 평가실이 있습니다',
+    '협의실':         '홈베이스 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진하면 평가실 다음에 협의실이 있습니다',
+    '컴퓨터실습실':   '홈베이스 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진하면 협의실 다음에 컴퓨터실습실이 있습니다',
+    '정보과연구실':   '홈베이스 옆 계단에서 나와 왼쪽으로 완전히 꺾어 직진하면 복도 끝 정보과연구실이 있습니다',
+    '진로활동실':     '홈베이스 옆 계단에서 나와 EV 방향으로 이동 후 왼쪽으로 꺾어 끝까지 직진하면 진로활동실이 있습니다',
+    '1-5반':          '홈베이스 옆 계단에서 나와 EV쪽으로 이동 후 왼쪽으로 꺾으면 1-5반이 있습니다',
+  },
+  /* ── 3층 ── */
+  '3_ev': {
+    '1-6반':          'EV쪽 계단에서 나와 오른쪽으로 꺾으면 수석교사실 다음에 1-6반이 있습니다',
+    '1-7반':          'EV쪽 계단에서 나와 오른쪽으로 꺾어 직진하면 1-6반 다음에 1-7반이 있습니다',
+    '1-8반':          'EV쪽 계단에서 나와 오른쪽으로 꺾어 직진하면 1-8반이 있습니다',
+    '1-9반':          'EV쪽 계단에서 나와 오른쪽으로 꺾어 직진하면 1-9반이 있습니다',
+    '1-10반':         'EV쪽 계단에서 나와 오른쪽으로 꺾어 끝까지 직진하면 1-10반이 있습니다',
+    '수석교사실':     'EV쪽 계단에서 나오면 앞 살짝 오른쪽에 수석교사실이 보입니다',
+    '소형홈베이스':   'EV쪽 계단에서 나와 직진하면 소형홈베이스가 있습니다',
+    '온라인수업제작실':'EV쪽 계단에서 나와 직진하면 소형홈베이스 다음에 온라인수업제작실이 있습니다',
+    '수업카페':       'EV쪽 계단에서 나와 직진하면 온라인수업제작실 다음에 수업카페가 있습니다',
+    '기술준비실':     'EV쪽 계단에서 나와 왼쪽으로 꺾으면 기술준비실이 있습니다',
+    '기술실상상제작소':'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 기술실상상제작소가 있습니다',
+    '가정실':         'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 가정실이 있습니다',
+    '가정준비실':     'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 가정준비실이 있습니다',
+    '남자휴게실':     'EV쪽 계단에서 나와 왼쪽으로 꺾으면 복도 맞은편에 남자휴게실이 있습니다',
+    '여자휴게실':     'EV쪽 계단에서 나와 왼쪽으로 꺾으면 복도 맞은편에 여자휴게실이 있습니다',
+  },
+  '3_end': {
+    '1-10반':         '복도 끝 계단에서 나와 오른쪽으로 꺾으면 바로 1-10반이 있습니다',
+    '1-9반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-9반이 있습니다',
+    '1-8반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-8반이 있습니다',
+    '1-7반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-7반이 있습니다',
+    '1-6반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 1-6반이 있습니다',
+    '수석교사실':     '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 수석교사실이 있습니다',
+    '소형홈베이스':   '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 소형홈베이스가 있습니다',
+  },
+  '3_bot': {
+    '미술실':         '과학실 옆 계단에서 나와 직진하면 미술실이 있습니다',
+    '과학실 1':       '과학실 옆 계단에서 나와 왼쪽으로 꺾으면 바로 과학실1이 있습니다',
+    '과학교과연구실': '과학실 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 과학실1 다음에 과학교과연구실이 있습니다',
+    '과학실 2':       '과학실 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 과학교과연구실 다음에 과학실2가 있습니다',
+    '과학준비실 1':   '과학실 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 과학실2 다음에 과학준비실1이 있습니다',
+    '과학실 3':       '과학실 옆 계단에서 나와 왼쪽으로 꺾어 직진하면 과학준비실1 다음에 과학실3이 있습니다',
+    '과학준비실 2':   '과학실 옆 계단에서 나와 왼쪽으로 꺾어 끝까지 직진하면 과학준비실2가 있습니다',
+    '수업카페':       '과학실 옆 계단에서 나와 오른쪽으로 꺾으면 수업카페가 있습니다',
+    '온라인수업제작실':'과학실 옆 계단에서 나와 오른쪽으로 꺾어 직진하면 수업카페 다음에 온라인수업제작실이 있습니다',
+    '소형홈베이스':   '과학실 옆 계단에서 나와 오른쪽으로 꺾어 직진하면 소형홈베이스가 있습니다',
+  },
+  /* ── 4층 ── */
+  '4_ev': {
+    '2-2반':          'EV쪽 계단에서 나와 오른쪽으로 꺾어 끝까지 직진하면 2-2반이 있습니다',
+    '2-3반':          'EV쪽 계단에서 나와 오른쪽으로 꺾어 직진하면 2-5반·2-4반·2-3반 순으로 나옵니다',
+    '2-4반':          'EV쪽 계단에서 나와 오른쪽으로 꺾으면 2-5반 다음에 2-4반이 있습니다',
+    '2-5반':          'EV쪽 계단에서 나와 오른쪽으로 꺾으면 바로 2-5반이 있습니다',
+    '2학년실':        'EV쪽 계단에서 나와 오른쪽으로 꺾으면 바로 2학년실이 있습니다',
+    '홈베이스':       'EV쪽 계단에서 나와 직진하면 홈베이스가 있습니다',
+    '2-6반':          'EV쪽 계단에서 나와 왼쪽으로 꺾으면 바로 2-6반이 있습니다',
+    '2-7반':          'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 2-6반 다음에 2-7반이 있습니다',
+    '2-8반':          'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 2-8반이 있습니다',
+    '2-9반':          'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 2-9반이 있습니다',
+    '그룹학습실':     'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 교실 맞은편에 그룹학습실이 있습니다',
+    '다목적수업교실': 'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾으면 하단 복도가 나오고 다목적수업교실이 있습니다',
+    '2-1반':          'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾으면 다목적수업교실 다음에 2-1반이 있습니다',
+    '중형강의실':     'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾으면 2-1반 다음에 중형강의실이 있습니다',
+    '위클래스상담실': 'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾으면 중형강의실 다음에 위클래스상담실이 있습니다',
+    '생활안전교육부': 'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾으면 복도 맞은편에 생활안전교육부가 있습니다',
+    '음악실':         'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾어 직진하면 음악실이 있습니다',
+  },
+  '4_end': {
+    '2-2반':          '복도 끝 계단에서 나와 오른쪽으로 꺾으면 바로 2-2반이 있습니다',
+    '2-3반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 2-2반 다음에 2-3반이 있습니다',
+    '2-4반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 2-4반이 있습니다',
+    '2-5반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 2-5반이 있습니다',
+    '2학년실':        '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 2학년실이 있습니다',
+    '홈베이스':       '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 홈베이스가 있습니다',
+  },
+  '4_bot': {
+    '음악실':         '하단 계단에서 나와 직진하면 음악실이 있습니다',
+    '다목적수업교실': '하단 계단에서 나와 왼쪽으로 꺾으면 다목적수업교실이 있습니다',
+    '2-1반':          '하단 계단에서 나와 왼쪽으로 꺾으면 다목적수업교실 다음에 2-1반이 있습니다',
+    '중형강의실':     '하단 계단에서 나와 왼쪽으로 꺾으면 2-1반 다음에 중형강의실이 있습니다',
+    '위클래스상담실': '하단 계단에서 나와 왼쪽으로 꺾으면 중형강의실 다음에 위클래스상담실이 있습니다',
+    '생활안전교육부': '하단 계단에서 나와 왼쪽으로 꺾으면 복도 맞은편에 생활안전교육부가 있습니다',
+    '홈베이스':       '하단 계단에서 나와 오른쪽으로 꺾으면 홈베이스가 있습니다',
+    '2-6반':          '하단 계단에서 나와 오른쪽으로 꺾어 직진하면 2-6반이 있습니다',
+    '2-9반':          '하단 계단에서 나와 오른쪽으로 꺾어 직진하면 2-9반이 있습니다',
+    '그룹학습실':     '하단 계단에서 나와 오른쪽으로 꺾어 직진하면 교실 맞은편에 그룹학습실이 있습니다',
+  },
+  /* ── 5층 ── */
+  '5_ev': {
+    '3-2반':          'EV쪽 계단에서 나와 오른쪽으로 꺾어 끝까지 직진하면 3-2반이 있습니다',
+    '3-3반':          'EV쪽 계단에서 나와 오른쪽으로 꺾어 직진하면 3-5반·3-4반·3-3반 순으로 나옵니다',
+    '3-4반':          'EV쪽 계단에서 나와 오른쪽으로 꺾으면 3-5반 다음에 3-4반이 있습니다',
+    '3-5반':          'EV쪽 계단에서 나와 오른쪽으로 꺾으면 바로 3-5반이 있습니다',
+    '3학년실':        'EV쪽 계단에서 나와 오른쪽으로 꺾으면 바로 3학년실이 있습니다',
+    '홈베이스':       'EV쪽 계단에서 나와 직진하면 홈베이스가 있습니다',
+    '3-6반':          'EV쪽 계단에서 나와 왼쪽으로 꺾으면 바로 3-6반이 있습니다',
+    '3-7반':          'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 3-6반 다음에 3-7반이 있습니다',
+    '3-8반':          'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 3-8반이 있습니다',
+    '3-9반':          'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 3-9반이 있습니다',
+    '진학상담실':     'EV쪽 계단에서 나와 왼쪽으로 꺾어 직진하면 교실 맞은편에 진학상담실이 있습니다',
+    '다목적실':       'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾으면 하단 복도가 나오고 다목적실이 있습니다',
+    '3-1반':          'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾으면 자습실 다음에 3-1반이 있습니다',
+    '자습실':         'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾으면 자습실이 있습니다',
+    '대형강의실':     'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾으면 3-1반 다음에 대형강의실이 있습니다',
+    'IT·토론학습실':  'EV쪽 계단에서 나와 직진 후 오른쪽으로 꺾으면 복도 맞은편에 IT·토론학습실이 있습니다',
+  },
+  '5_end': {
+    '3-2반':          '복도 끝 계단에서 나와 오른쪽으로 꺾으면 바로 3-2반이 있습니다',
+    '3-3반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 3-2반 다음에 3-3반이 있습니다',
+    '3-4반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 3-4반이 있습니다',
+    '3-5반':          '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 3-5반이 있습니다',
+    '3학년실':        '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 3학년실이 있습니다',
+    '홈베이스':       '복도 끝 계단에서 나와 오른쪽으로 꺾어 직진하면 홈베이스가 있습니다',
+  },
+  '5_bot': {
+    '다목적실':       '하단 계단에서 나와 직진하면 다목적실이 있습니다',
+    '자습실':         '하단 계단에서 나와 왼쪽으로 꺾으면 자습실이 있습니다',
+    '3-1반':          '하단 계단에서 나와 왼쪽으로 꺾으면 자습실 다음에 3-1반이 있습니다',
+    '대형강의실':     '하단 계단에서 나와 왼쪽으로 꺾으면 3-1반 다음에 대형강의실이 있습니다',
+    'IT·토론학습실':  '하단 계단에서 나와 왼쪽으로 꺾으면 복도 맞은편에 IT·토론학습실이 있습니다',
+    '홈베이스':       '하단 계단에서 나와 오른쪽으로 꺾으면 홈베이스가 있습니다',
+    '3-6반':          '하단 계단에서 나와 오른쪽으로 꺾어 직진하면 3-6반이 있습니다',
+    '3-9반':          '하단 계단에서 나와 오른쪽으로 꺾어 직진하면 3-9반이 있습니다',
+    '진학상담실':     '하단 계단에서 나와 오른쪽으로 꺾어 직진하면 교실 맞은편에 진학상담실이 있습니다',
+  },
+};
+
+function getToStair(fromName, floor, stairGroup) {
+  const key = `${floor}_${stairGroup}`;
+  const groupData = TO_STAIR_BY_GROUP[key];
+  if (groupData && groupData[fromName]) return groupData[fromName];
+  return `${STAIR_NAME[stairGroup] || '계단'}을 찾아 이동하세요`;
+}
+
+function getFromStair(toName, floor, stairGroup) {
+  const key = `${floor}_${stairGroup}`;
+  const groupData = FROM_STAIR_BY_GROUP[key];
+  if (groupData && groupData[toName]) return groupData[toName];
+  return `${STAIR_NAME[stairGroup] || '계단'}에서 나와 목적지 방향으로 이동합니다`;
+}
+
+function calcRoute(fromName, toName) {
+  const f = PLACES.find(p => p.name === fromName);
+  const t = PLACES.find(p => p.name === toName);
+  if (!f || !t) return [];
+
+  const steps = [];
+  const diff = t.floor - f.floor;
+  const same = diff === 0;
+  const abs  = Math.abs(diff);
+  const goUp = diff > 0;
+
+  /* 1. 출발 */
+  steps.push({
+    icon: '📍', num: 1,
+    text: `${f.name}에서 출발합니다`,
+    sub: `${f.floor}층`
+  });
+
+  if (same) {
+    /* ── 같은 층 ── */
+    const directKey = `${f.floor}_${f.name}_${t.name}`;
+    if (SAME_FLOOR_DIRECT[directKey]) {
+      steps.push({ icon:'🚶', num:2, text: SAME_FLOOR_DIRECT[directKey], sub: '' });
+    } else if (f.zone === t.zone) {
+      steps.push({ icon:'🚶', num:2, text:'같은 구역에 있습니다. 복도를 따라 이동합니다', sub: '' });
+    } else {
+      /* 계단 결정 후 안내 */
+      const sg = chooseStair(f.name, t.name, f.floor);
+      steps.push({ icon:'🚶', num:2, text: getToStair(f.name, f.floor, sg), sub:`${STAIR_NAME[sg]} 이용` });
+      steps.push({ icon:'🚶', num:3, text: getFromStair(t.name, t.floor, sg), sub:'' });
+    }
+  } else {
+    /* ── 다른 층 ── */
+    /* 목적지 기준으로 계단 결정 */
+    const sg = chooseStair(f.name, t.name, f.floor);
+    const stairName = STAIR_NAME[sg] || '계단';
+
+    /* 2. 계단으로 이동 */
+    steps.push({
+      icon: '🚶', num: 2,
+      text: getToStair(f.name, f.floor, sg),
+      sub: `${stairName} 이용`
+    });
+
+    /* 3. 층 이동 */
+    steps.push({
+      icon: goUp ? '⬆️' : '⬇️', num: 3,
+      text: `${stairName}을 이용해 ${t.floor}층으로 ${goUp ? '올라갑니다' : '내려갑니다'}`,
+      sub: `${abs}층 ${goUp ? '위' : '아래'} · 계단 이용 시 약 ${abs * 15}~${abs * 25}초`
+    });
+
+    /* 4. 목적지까지 이동 */
+    steps.push({
+      icon: '🚶', num: 4,
+      text: getFromStair(t.name, t.floor, sg),
+      sub: ''
+    });
+  }
+
+  /* 마지막: 도착 */
+  steps.push({
+    icon: '🎯',
+    num: same ? (SAME_FLOOR_DIRECT[`${f.floor}_${f.name}_${t.name}`] ? 3 : 4) : 5,
+    text: `${t.name} 도착!`,
+    sub: `${t.floor}층 · ${t.type}`
+  });
+
+  return steps;
+}
+
+/* =====================================================
+   경로 안내 화면
+   ===================================================== */
+function openNavScreen(toName, fromName) {
+  navDest = toName || navDest;
+  const from = fromName || currentLocation;
+  document.getElementById('nav-screen').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderNav(from, navDest);
+}
+function closeNavScreen() {
+  document.getElementById('nav-screen').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderNav(fromName, toName) {
+  const f = fromName ? PLACES.find(p=>p.name===fromName) : null;
+  const t = toName   ? PLACES.find(p=>p.name===toName)   : null;
+  let html = '';
+
+  /* 출발지 카드 */
+  html += f
+    ? `<div class="point-card"><div class="pc-label from">📍 출발지</div><div class="pc-name">${f.name}</div><div class="pc-sub">${f.floor}층 · ${f.type}</div></div>`
+    : `<div class="point-empty" onclick="openLocSheet()"><p>📍 출발지를 선택해주세요</p></div>`;
+
+  /* 목적지 카드 */
+  html += t
+    ? `<div class="point-card"><div class="pc-label to">🎯 목적지</div><div class="pc-name">${t.name}</div><div class="pc-sub">${t.floor}층 · ${t.type}</div></div>`
+    : `<div class="point-empty" onclick="openDestPanel()"><p>🎯 목적지를 선택해주세요</p></div>`;
+
+  if (f && t) {
+    if (f.name === t.name) {
+      html += `<div class="same-note">✅ 현재 위치가 목적지입니다!</div>`;
+    } else {
+      const diff = Math.abs(t.floor - f.floor);
+      if (diff > 0) {
+        html += `<div class="floor-badge-big"><span class="fbb-icon">${t.floor>f.floor?'⬆️':'⬇️'}</span>
+          <div class="fbb-text"><strong>${f.floor}층 → ${t.floor}층</strong>으로 이동합니다<br>${diff}층 ${t.floor>f.floor?'위':'아래'}</div></div>`;
+      } else {
+        html += `<div class="same-note">🟢 같은 층 (${f.floor}층)입니다</div>`;
+      }
+      const steps = calcRoute(f.name, t.name);
+      html += `<p class="steps-title">단계별 안내</p>`;
+      steps.forEach(s => {
+        html += `<div class="step-card">
+          <span class="step-icon">${s.icon}</span>
+          <div>
+            <div class="step-num">${s.num}단계</div>
+            <div class="step-text">${s.text}</div>
+            ${s.sub ? `<div class="step-sub">${s.sub}</div>` : ''}
+          </div>
+        </div>`;
+      });
+    }
+  } else if (f || t) {
+    html += `<p style="text-align:center;color:#aaa;padding:16px;font-size:14px;">${f?'목적지를':'출발지를'} 선택하면 경로를 안내해 드립니다</p>`;
+  }
+
+  document.getElementById('nav-body').innerHTML = html;
+}
+
+/* =====================================================
+   목적지 검색 패널
+   ===================================================== */
+function openDestPanel() {
+  document.getElementById('dest-panel').classList.add('open');
+  document.getElementById('dp-input').value = '';
+  renderDestList('');
+  setTimeout(()=>document.getElementById('dp-input').focus(), 100);
+}
+function closeDestPanel() {
+  document.getElementById('dest-panel').classList.remove('open');
+}
+function onDestSearch(kw) { renderDestList(kw); }
+
+function renderDestList(kw) {
+  const list = PLACES.filter(p =>
+    !kw || p.name.includes(kw.trim()) || p.type.includes(kw.trim())
+  );
+  const wrap = document.getElementById('dp-list');
+  if (!list.length) { wrap.innerHTML = '<div class="no-result">😥 검색 결과가 없어요</div>'; return; }
+  wrap.innerHTML = list.map(p => `
+    <div class="place-card" onclick="selectDest('${p.name.replace(/'/g,"\\'")}')">
+      <div class="floor-badge">${p.floor}층</div>
+      <div class="place-info">
+        <div class="place-name">${p.name}</div>
+        <div class="place-desc">${p.floor}층 · ${p.type}</div>
+      </div>
+    </div>`).join('');
+}
+
+function selectDest(name) {
+  navDest = name;
+  closeDestPanel();
+  renderNav(currentLocation, navDest);
+}
+
+/* =====================================================
+   장소 목록 & 팝업
+   ===================================================== */
+function init() { renderList(PLACES, '전체 장소'); }
+
+function onSearch(kw) {
+  if (!kw.trim()) { renderList(PLACES, '전체 장소'); return; }
+  const list = PLACES.filter(p => p.name.includes(kw.trim()) || p.type.includes(kw.trim()));
+  renderList(list, `검색 결과 ${list.length}개`);
+}
+
+function renderList(places, label) {
+  document.getElementById('list-label').textContent = label;
+  const wrap = document.getElementById('place-list');
+  if (!places.length) { wrap.innerHTML = '<div class="no-result">😥 검색 결과가 없어요</div>'; return; }
+  wrap.innerHTML = places.map(p => `
+    <div class="place-card" onclick="openModal(${PLACES.indexOf(p)})">
+      <div class="floor-badge">${p.floor}층</div>
+      <div class="place-info">
+        <div class="place-name">${p.name}</div>
+        <div class="place-desc">${p.floor}층 · ${p.type}</div>
+      </div>
+    </div>`).join('');
+}
+
+function openModal(idx) {
+  const p = PLACES[idx], d = p.details;
+  document.getElementById('modal-title').textContent = d.icon + ' ' + p.name;
+  document.getElementById('modal-badge').textContent = `${p.floor}층 · ${p.type}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="mrow"><span class="mrow-icon">📍</span>
+      <div><div class="mrow-label">위치</div><div class="mrow-value">${d.location}</div></div></div>`;
+
+  const hasCurrent = !!currentLocation && currentLocation !== p.name;
+  document.getElementById('modal-btns').innerHTML = `
+    ${hasCurrent
+      ? `<button class="btn-primary" onclick="closeModal();openNavScreen('${p.name.replace(/'/g,"\\'")}',null)">🗺️ 여기까지 경로 안내</button>`
+      : `<button class="btn-primary" onclick="closeModal();setCurrentLocation('${p.name.replace(/'/g,"\\'")}')">📍 현재 위치로 설정</button>`}
+    <button class="btn-primary btn-secondary" onclick="closeModal();openNavScreen(null,'${p.name.replace(/'/g,"\\'")}')">이곳에서 목적지 찾기 →</button>`;
+
+  document.getElementById('modal-bg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-bg')) return;
+  document.getElementById('modal-bg').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
