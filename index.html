@@ -585,7 +585,7 @@ function updateLocSheet() {
       ${[1,2,3,4,5].map(f => `
         <button class="ls-option ${locFloor===f?'selected':''}" onclick="selectFloor(${f})">
           <div>${f}층</div>
-          <div class="ls-option-sub">${f===1?'행정·식당':f===2?'1학년(1-4반)':f===3?'1학년(5-10반)':f===4?'2학년':f===5?'3학년':''}</div>
+          <div class="ls-option-sub">${f===1?'행정·식당':f===2?'1학년(1-5반)':f===3?'1학년(6-10반)':f===4?'2학년':f===5?'3학년':''}</div>
         </button>`).join('')}
     </div>`;
 
